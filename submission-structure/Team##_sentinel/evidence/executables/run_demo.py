@@ -29,9 +29,10 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from src.analytics.operations import generate_insights
 from src.detection import process_event as run_detectors
 from src.detection import reset_all as reset_detectors
-from src.pipeline.transform import normalize_event
+from src.pipeline.transform import SentinelEvent, normalize_event
 
 
 def ensure_results_dir(base: Path) -> Path:
@@ -119,23 +120,23 @@ def stream_frames(host: str, port: int, limit: int, timeout: float = 15.0):
     return
 
 
-def run_pipeline(host: str, port: int, limit: int, out_path: Path) -> tuple[int, int]:
-    """Stream frames, run detectors, and write detections incrementally."""
+def run_pipeline(host: str, port: int, limit: int, out_path: Path) -> tuple[int, list[dict], list[SentinelEvent]]:
+    """Stream frames, run detectors, and return aggregate results."""
 
     raw_log_path = out_path.with_name("raw_stream.jsonl")
-    detections = 0
+    detections: list[dict] = []
+    events: list[SentinelEvent] = []
     frames = 0
 
-    with out_path.open("w", encoding="utf-8") as det_file, raw_log_path.open("w", encoding="utf-8") as raw_file:
+    with raw_log_path.open("w", encoding="utf-8") as raw_file:
         for line in stream_frames(host, port, limit):
             frames += 1
             raw_file.write(line + "\n")
             normalized = normalize_event(line.encode("utf-8"))
             if normalized is None:
                 continue
+            events.append(normalized)
             alerts = run_detectors(normalized)
-            if not alerts:
-                continue
             for alert in alerts:
                 enriched = dict(alert)
                 enriched.setdefault("source", {})
@@ -146,15 +147,16 @@ def run_pipeline(host: str, port: int, limit: int, out_path: Path) -> tuple[int,
                         "event_timestamp": normalized.timestamp.isoformat(timespec="milliseconds"),
                     }
                 )
-                det_file.write(json.dumps(enriched) + "\n")
-                det_file.flush()
-                detections += 1
+                detections.append(enriched)
 
-        if detections == 0:
+    with out_path.open("w", encoding="utf-8") as det_file:
+        if detections:
+            for record in detections:
+                det_file.write(json.dumps(record) + "\n")
+        else:
             det_file.write(json.dumps({"info": "no_detections", "frames": frames}) + "\n")
-            det_file.flush()
 
-    return frames, detections
+    return frames, detections, events
 
 
 def main(argv: list[str]) -> int:
@@ -178,14 +180,19 @@ def main(argv: list[str]) -> int:
         reset_detectors()
 
         out_path = results_dir / "events.jsonl"
-        frames, detections = run_pipeline(args.host, args.port, args.limit, out_path)
+        frames, detections, events = run_pipeline(args.host, args.port, args.limit, out_path)
 
         if frames == 0:
             print("[error] No events received from stream; exiting with failure.")
             return 2
 
+        insights = generate_insights(events, detections)
+        insights_path = results_dir / "insights.json"
+        with insights_path.open("w", encoding="utf-8") as handle:
+            json.dump(insights, handle, indent=2)
+
         print(
-            f"[info] Processed {frames} frames, emitted {detections} detections -> {out_path}"
+            f"[info] Processed {frames} frames, emitted {len(detections)} detections -> {out_path}"
         )
         return 0
     finally:
