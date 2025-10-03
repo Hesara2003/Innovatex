@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+
+# Node
+node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Data & outputs
+/data/output/*.jsonl
+submission-structure/**/output/**
+**/results/
+**/dist/
+**/build/
+
+# Logs
+*.log
+
+# Byte-compiled / caches
+*.pickle
+*.pkl
+*.cache/
