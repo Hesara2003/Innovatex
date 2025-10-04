@@ -1,2 +1,61 @@
 Customer_ID,Name,Age,Address,TP
 C001,Amith Perera,35,"123 Galle Road, Colombo 03",+94771234567
+C002,Dinusha Fernando,42,"456 Nawala Road, Nugegoda",+94772345678
+C003,Sunil Jayawardena,27,"789 High Level Road, Maharagama",+94773456789
+C004,Malini Gunawardena,31,"321 Havelock Road, Colombo 05",+94774567890
+C005,Kamal Wickramasinghe,56,"654 Baseline Road, Borella",+94775678901
+C006,Kumari Dissanayake,29,"987 Kandy Road, Kadawatha",+94776789012
+C007,Rajitha Bandara,45,"246 Galle Road, Dehiwala",+94777890123
+C008,Nishanthi Ranatunga,38,"135 Duplication Road, Kollupitiya",+94778901234
+C009,Lasantha Liyanage,52,"864 Parliament Road, Sri Jayewardenepura",+94779012345
+C010,Dilrukshi Kumarasinghe,33,"975 Marine Drive, Wellawatte",+94770123456
+C011,Hasitha Weerasinghe,41,"753 Jawatte Road, Colombo 07",+94771234568
+C012,Chamari Gunathilaka,26,"159 Old Kottawa Road, Mirihana",+94772345679
+C013,Asanka Samaraweera,49,"357 Negombo Road, Wattala",+94773456790
+C014,Fathima Hafsa,37,"486 Abdul Hameed Street, Colombo 12",+94774567891
+C015,Dharshana Silva,61,"293 Sri Sangaraja Mawatha, Colombo 10",+94775678902
+C016,Mei Lin,28,"174 Union Place, Colombo 02",+94776789013
+C017,Isuru Senanayake,44,"618 Kotte Road, Rajagiriya",+94777890124
+C018,Anula Peiris,36,"925 Stanley Road, Jaffna",+94778901235
+C019,Chandima Ratnayake,53,"734 Main Street, Batticaloa",+94779012346
+C020,Nadeeka Athukorala,31,"528 Beach Road, Negombo",+94770123457
+C021,Janith Weerakoon,47,"319 Hospital Road, Kalubowila",+94771234569
+C022,Sithara Ramanayake,29,"726 Dharmapala Mawatha, Colombo 07",+94772345680
+C023,Harsha Gunatilleke,55,"835 Nawam Mawatha, Colombo 02",+94773456791
+C024,Priyanka Seneviratne,34,"147 Ananda Coomaraswamy Mawatha, Colombo 07",+94774567892
+C025,Kavinda Rajapaksa,43,"962 Kumaratunga Munidasa Mawatha, Colombo 03",+94775678903
+C026,Ishara De Silva,25,"258 Sri Dalada Veediya, Kandy",+94776789014
+C027,Vishwa Munasinghe,58,"369 Baddegana Road, Pita Kotte",+94777890125
+C028,Yashoda Abeysekara,32,"471 Nawala Road, Koswatte",+94778901236
+C029,Tharaka Alahakoon,39,"582 Galle Face Terrace, Colombo 03",+94779012347
+C030,Dilini Jayasuriya,51,"693 Gregory's Road, Colombo 07",+94770123458
+C031,Nuwan Karunaratne,37,"123 Vauxhall Street, Colombo 02",+94771234570
+C032,Sachini Amarasekara,29,"456 Ananda Balika Mawatha, Colombo 10",+94772345681
+C033,Prasad Gunasekara,48,"789 Peradeniya Road, Kandy",+94773456792
+C034,Chathurika Fonseka,33,"321 Lake Drive, Rajagiriya",+94774567893
+C035,Dinesh Ranasinghe,52,"654 Old Moor Street, Colombo 12",+94775678904
+C036,Manoja Samarasinghe,31,"987 Bagatale Road, Colombo 03",+94776789015
+C037,Ruwan Herath,46,"246 Samagi Mawatha, Battaramulla",+94777890126
+C038,Nilmini Navaratne,35,"135 Horton Place, Colombo 07",+94778901237
+C039,Lakmal Nanayakkara,54,"864 Thimbirigasyaya Road, Colombo 05",+94779012348
+C040,Anushi Kotelawala,30,"975 Kynsey Road, Colombo 08",+94770123459
+C041,Jayantha Pathirana,44,"753 Bullers Road, Colombo 07",+94771234571
+C042,Wasana Vithanage,28,"159 Dickmans Road, Colombo 05",+94772345682
+C043,Mohamed Farook,47,"357 Jaya Mawatha, Colombo 05",+94773456793
+C044,Lakmali Peris,32,"486 Battaramulla High Level Road, Battaramulla",+94774567894
+C045,Gihan Mendis,59,"293 Cotta Road, Borella",+94775678905
+C046,Iresha Wickramaratne,26,"174 Maligawatta Road, Colombo 10",+94776789016
+C047,Udara Hettiarachchi,50,"618 Bauddhaloka Mawatha, Colombo 07",+94777890127
+C048,Samanthi Cooray,36,"925 Old Kesbewa Road, Nugegoda",+94778901238
+C049,Krishan Rajakaruna,41,"734 Elvitigala Mawatha, Colombo 05",+94779012349
+C050,Disna Wanigasekara,34,"528 Skelton Road, Colombo 05",+94770123460
+C051,Thisara Jayalath,45,"319 Park Road, Colombo 05",+94771234572
+C052,Nimali Balasuriya,27,"726 Reid Avenue, Colombo 07",+94772345683
+C053,Anton Dias,53,"835 Sir James Pieris Mawatha, Colombo 02",+94773456794
+C054,Sanjeewani Kodikara,31,"147 Barnes Place, Colombo 07",+94774567895
+C055,Lakshitha Ekanayake,40,"962 Wijerama Mawatha, Colombo 07",+94775678906
+C056,Thilini Gunarathna,29,"258 Castle Street, Colombo 08",+94776789017
+C057,Priyath Weliwita,57,"369 Alexandra Road, Colombo 06",+94777890128
+C058,Anusha Ratwatte,38,"471 Balapokuna Road, Colombo 06",+94778901239
+C059,Hemantha Amaratunga,44,"582 Green Path, Colombo 07",+94779012350
+C060,Shyamali Pieris,33,"693 Flowerpot Street, Colombo 07",+94770123461
