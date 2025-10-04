@@ -99,10 +99,20 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self._send_json(payload)
 
     def _handle_alerts(self) -> None:
+        alerts_file = Path(__file__).resolve().parents[2] / "results" / "alerts.jsonl"
+        detection_events = []
+        if alerts_file.exists():
+            with alerts_file.open("r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        detection_events.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+        
         response = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "queue_incidents": queue_metrics_service.get_recent_incidents(limit=20),
-            "detection_events": list(STATE["detection_events"])[-20:],
+            "detection_events": detection_events[-20:],
             "suspicious_checkouts": event_correlator.get_recent_suspicious(limit=20),
         }
         self._send_json(response)

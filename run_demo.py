@@ -12,6 +12,15 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
 from src.analytics import evaluate
+from src.detection import (
+    barcode_switching,
+    inventory_discrepancy,
+    queue_health,
+    reset_all,
+    scanner_avoidance,
+    system_health,
+    weight_discrepancy,
+)
 from src.pipeline import joiners, transform
 
 
@@ -70,6 +79,30 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _run_detectors(events: Iterable[transform.SentinelEvent]) -> List[dict]:
+    """Run all registered detectors and return a flat list of alerts."""
+    reset_all()
+    alerts: List[dict] = []
+    detector_map = {
+        "barcode_switching": barcode_switching.detect_barcode_switching,
+        "inventory_discrepancy": inventory_discrepancy.detect_inventory_discrepancy,
+        "queue_health": queue_health.detect_queue_health,
+        "scanner_avoidance": scanner_avoidance.detect_scanner_avoidance,
+        "system_health": system_health.detect_system_health,
+        "weight_discrepancy": weight_discrepancy.detect_weight_discrepancy,
+    }
+
+    for event in events:
+        for name, detector_func in detector_map.items():
+            try:
+                new_alerts = detector_func(event)
+                if new_alerts:
+                    alerts.extend(new_alerts)
+            except Exception:
+                logging.warning("Detector %s failed on event: %s", name, event, exc_info=True)
+    return alerts
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -103,6 +136,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_path = results_dir / "events.jsonl"
     _write_jsonl(out_path, enriched_list)
     logging.info("Wrote %d events to %s", len(enriched_list), out_path)
+
+    logging.info("Running all detectors on %d enriched events", len(records))
+    alerts = _run_detectors(records)
+    alerts_path = results_dir / "alerts.jsonl"
+    _write_jsonl(alerts_path, alerts)
+    logging.info("Wrote %d alerts to %s", len(alerts), alerts_path)
 
     counts = _dataset_counts(enriched_list)
     for dataset, count in counts.items():
