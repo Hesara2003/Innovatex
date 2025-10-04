@@ -7,79 +7,395 @@
     <title>Project Sentinel – CX Command Center</title>
     <style>
       :root {
-        color-scheme: dark light;
-        --bg: #0f172a;
-        --panel: rgba(30, 41, 59, 0.9);
-        --card: rgba(15, 23, 42, 0.85);
-        --text: #f8fafc;
-        --muted: #94a3b8;
-        --accent: #38bdf8;
-        --border: rgba(255, 255, 255, 0.1);
-        font-family: "Segoe UI", Tahoma, sans-serif;
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --surface-soft: #f8fafc;
+        --surface-muted: #eef2ff;
+        --text-primary: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --accent: #2563eb;
+        --accent-secondary: #4f46e5;
+        --accent-soft: rgba(37, 99, 235, 0.12);
+        --accent-gradient: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.18), rgba(79, 70, 229, 0.05) 45%, rgba(15, 23, 42, 0.02));
+        --success: #16a34a;
+        --warning: #f97316;
+        --danger: #dc2626;
+        --shadow: 0 22px 55px rgba(15, 23, 42, 0.08);
+        --radius-lg: 22px;
+        --radius-xl: 28px;
+        font-family: "Inter", "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
       }
 
       body {
         margin: 0;
-        background: linear-gradient(135deg, var(--bg), #1e293b 55%, #111827);
-        color: var(--text);
+        background: var(--bg);
+        color: var(--text-primary);
         min-height: 100vh;
         display: flex;
-        flex-direction: column;
       }
 
-      header {
-        padding: 2rem;
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .app-shell {
+        display: flex;
+        width: 100%;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 264px;
+        background: var(--surface);
+        border-right: 1px solid var(--border);
+        padding: 32px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+
+      .sidebar__brand {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .sidebar__title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sidebar__logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 1.1rem;
+      }
+
+      .sidebar__subtitle {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin: 0;
+      }
+
+      .sidebar__nav {
+        display: grid;
+        gap: 10px;
+      }
+
+      .sidebar__nav a {
+        padding: 10px 14px;
+        border-radius: 12px;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: background 0.18s ease, color 0.18s ease;
+      }
+
+      .sidebar__nav a:hover,
+      .sidebar__nav a:focus {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .sidebar__support {
+        margin-top: auto;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        border-top: 1px solid var(--border);
+        padding-top: 18px;
+      }
+
+      .app-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      .top-bar {
+        padding: 32px 40px 18px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), transparent);
-        border-bottom: 1px solid var(--border);
-        backdrop-filter: blur(12px);
+        align-items: flex-start;
+        gap: 32px;
       }
 
-      header h1 {
+      .top-bar__titles {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .top-bar h1 {
         margin: 0;
-        font-size: clamp(1.6rem, 2.4vw, 2.8rem);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        font-size: clamp(1.7rem, 2.6vw, 2.5rem);
+        letter-spacing: -0.015em;
+      }
+
+      .top-bar p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.97rem;
+        max-width: 580px;
+      }
+
+      .top-bar__meta {
+        display: flex;
+        align-items: center;
+        gap: 18px;
       }
 
       .status-chip {
-        background: rgba(34, 197, 94, 0.2);
-        border: 1px solid rgba(34, 197, 94, 0.6);
-        color: #bbf7d0;
-        padding: 0.4rem 0.9rem;
-        border-radius: 100px;
-        font-size: 0.9rem;
         display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--success);
+        box-shadow: 0 6px 18px rgba(22, 163, 74, 0.12);
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15);
+      }
+
+      .sync-indicator {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 0.55rem 1rem;
+        display: grid;
+        gap: 0.2rem;
+        min-width: 150px;
+      }
+
+      .sync-indicator span {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      .sync-indicator strong {
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
+      }
+
+      .content-grid {
+        padding: 0 40px 44px;
+        display: grid;
+        gap: 32px;
+      }
+
+      section.panel {
+        background: var(--surface);
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: var(--radius-lg);
+        padding: 26px 28px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 1.4rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .panel--wide {
+        grid-column: 1 / -1;
+      }
+
+      .panel--hero {
+        padding: 32px 34px;
+        border-radius: var(--radius-xl);
+        background: var(--accent-gradient);
+        box-shadow: 0 35px 60px rgba(37, 99, 235, 0.12);
+      }
+
+      .panel--hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 60%);
+        opacity: 0.8;
+      }
+
+      .panel--hero * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .panel__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+      }
+
+      .panel__title {
+        margin: 0;
+        font-size: 1.28rem;
+        letter-spacing: -0.01em;
+      }
+
+      .panel__hint {
+        margin: 4px 0 0;
+        color: var(--text-muted);
+        font-size: 0.86rem;
+        max-width: 360px;
+      }
+
+      .panel__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid rgba(37, 99, 235, 0.2);
+      }
+
+      .chip--outline {
+        background: rgba(255, 255, 255, 0.25);
+        color: var(--accent-secondary);
+      }
+
+      .chip--neutral {
+        background: var(--surface-soft);
+        border-color: rgba(148, 163, 184, 0.35);
+        color: var(--text-muted);
+      }
+
+      .hero-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      }
+
+      .hero-card {
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(6px);
+        border-radius: 18px;
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        padding: 18px 22px;
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .hero-card h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgba(14, 23, 42, 0.68);
+      }
+
+      .hero-card .metric-large {
+        font-size: 2.05rem;
+        font-weight: 700;
+        color: #0b1f44;
+      }
+
+      .hero-subtext {
+        font-size: 0.9rem;
+        color: rgba(14, 23, 42, 0.6);
+        display: flex;
         align-items: center;
         gap: 0.5rem;
       }
 
-      main {
-        flex: 1;
-        padding: 2rem;
+      .hero-chart {
+        background: rgba(255, 255, 255, 0.82);
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 18px 22px 20px;
         display: grid;
-        gap: 1.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        align-content: start;
+        gap: 0.9rem;
       }
 
-      section {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 1.5rem;
-        box-shadow: 0 20px 35px rgba(15, 23, 42, 0.45);
-        backdrop-filter: blur(8px);
+      .hero-chart svg {
+        width: 100%;
+        height: 96px;
+        display: block;
       }
 
-      section h2 {
-        margin-top: 0;
-        font-size: 1.25rem;
+      .history-summary {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        color: var(--text-muted);
+        font-size: 0.86rem;
+      }
+
+      .history-summary span {
+        background: rgba(37, 99, 235, 0.12);
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+        color: var(--accent-secondary);
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .trend-up {
+        color: var(--success);
+        background: rgba(22, 163, 74, 0.12) !important;
+      }
+
+      .trend-down {
+        color: var(--danger);
+        background: rgba(220, 38, 38, 0.12) !important;
+      }
+
+      .layout-columns {
+        display: grid;
+        gap: 28px;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+        align-items: start;
+      }
+
+      .column {
+        display: grid;
+        gap: 28px;
       }
 
       .cards {
@@ -87,243 +403,142 @@
         gap: 1rem;
       }
 
-      .station-card {
-        background: var(--card);
+      .grid-two {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      .grid-three {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .grid-auto {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .stat-box,
+      .station-card,
+      .list-card {
+        background: var(--surface-soft);
+        border-radius: 18px;
         border: 1px solid var(--border);
-        border-radius: 16px;
         padding: 1rem 1.2rem;
         display: grid;
-        gap: 0.5rem;
+        gap: 0.45rem;
+      }
+
+      .station-card {
         position: relative;
         overflow: hidden;
-        min-height: 140px;
       }
 
       .station-card::after {
         content: "";
         position: absolute;
         inset: 0;
-        opacity: 0.14;
-        background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.6), transparent 55%);
+        pointer-events: none;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), transparent 70%);
       }
 
       .station-card .station-id {
         font-weight: 600;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.03em;
       }
 
       .station-card .metric {
-        font-size: 0.95rem;
-        color: var(--muted);
         display: flex;
         justify-content: space-between;
+        font-size: 0.95rem;
+        color: var(--text-muted);
       }
 
       .health-indicator {
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 0 12px currentColor;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
       }
 
       .health-optimal {
-        color: #34d399;
+        background: #16a34a;
       }
 
       .health-stable {
-        color: #38bdf8;
+        background: #2563eb;
       }
 
       .health-at-risk {
-        color: #facc15;
+        background: #f97316;
       }
 
       .health-critical {
-        color: #f87171;
+        background: #dc2626;
+      }
+
+      .metric-large {
+        font-size: 1.9rem;
+        font-weight: 700;
       }
 
       .alert {
-        border-radius: 14px;
-        padding: 0.8rem 1rem;
-        margin-bottom: 0.8rem;
+        border-radius: 16px;
+        padding: 0.92rem 1rem;
         border: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.6);
-      }
-
-      .alert.high {
-        border-color: rgba(248, 113, 113, 0.5);
-        background: rgba(248, 113, 113, 0.15);
-      }
-
-      .alert.medium {
-        border-color: rgba(250, 204, 21, 0.4);
-        background: rgba(250, 204, 21, 0.12);
+        background: var(--surface-soft);
+        display: grid;
+        gap: 0.35rem;
       }
 
       .alert.low {
-        border-color: rgba(59, 130, 246, 0.35);
-        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(37, 99, 235, 0.2);
+        background: rgba(37, 99, 235, 0.08);
+      }
+
+      .alert.medium {
+        border-color: rgba(249, 115, 22, 0.25);
+        background: rgba(249, 115, 22, 0.12);
+      }
+
+      .alert.high {
+        border-color: rgba(220, 38, 38, 0.3);
+        background: rgba(220, 38, 38, 0.1);
       }
 
       .alert-title {
         font-weight: 600;
-        margin-bottom: 0.2rem;
-      }
-
-      .muted {
-        color: var(--muted);
-        font-size: 0.85rem;
-      }
-
-      .grid-two {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 0.8rem;
-      }
-
-      .grid-three {
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      }
-
-      .stat-box {
-        background: rgba(15, 23, 42, 0.7);
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        padding: 0.9rem 1rem;
-      }
-
-      section h3 {
-        margin-top: 1.2rem;
-        margin-bottom: 0.6rem;
-        font-size: 0.95rem;
-        color: var(--muted);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .history-chart {
-        margin-top: 1rem;
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 0.9rem 1rem;
-      }
-
-      .history-chart svg {
-        width: 100%;
-        height: 90px;
-        display: block;
-      }
-
-      .history-summary {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 0.5rem;
-        font-size: 0.85rem;
-        color: var(--muted);
-      }
-
-      .trend-up {
-        color: #34d399;
-      }
-
-      .trend-down {
-        color: #f87171;
-      }
-
-      .list-card.critical {
-        border-color: rgba(248, 113, 113, 0.5);
-        background: rgba(248, 113, 113, 0.15);
+        letter-spacing: 0.02em;
       }
 
       .data-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        background: var(--surface);
+        border-radius: 16px;
+        overflow: hidden;
       }
 
       .data-table th,
       .data-table td {
-        padding: 0.6rem 0.75rem;
+        padding: 0.65rem 0.8rem;
         text-align: left;
-        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-        font-size: 0.85rem;
+        border-bottom: 1px solid var(--border);
       }
 
       .data-table th {
-        color: var(--muted);
-        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
       }
 
       .data-table tr:nth-child(even) {
-        background: rgba(15, 23, 42, 0.35);
-      }
-
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.3rem 0.65rem;
-        border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        background: rgba(148, 163, 184, 0.15);
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-
-      .pill.danger {
-        border-color: rgba(248, 113, 113, 0.5);
-        background: rgba(248, 113, 113, 0.2);
-        color: #fecaca;
-      }
-
-      .pill.warn {
-        border-color: rgba(250, 204, 21, 0.4);
-        background: rgba(250, 204, 21, 0.18);
-        color: #fef08a;
-      }
-
-      .pill.success {
-        border-color: rgba(74, 222, 128, 0.4);
-        background: rgba(74, 222, 128, 0.2);
-        color: #bbf7d0;
-      }
-
-      .warning-text {
-        color: #facc15;
-        font-size: 0.82rem;
-      }
-
-      .grid-auto {
-        display: grid;
-        gap: 0.8rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-
-      .list-group {
-        display: grid;
-        gap: 0.9rem;
-      }
-
-      .list-card {
-        background: rgba(15, 23, 42, 0.7);
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        padding: 0.9rem 1rem;
-        display: grid;
-        gap: 0.3rem;
-      }
-
-      .list-card strong {
-        font-size: 1rem;
+        background: var(--surface-soft);
       }
 
       .badge-row {
@@ -333,39 +548,80 @@
       }
 
       .badge {
-        background: rgba(59, 130, 246, 0.18);
-        border: 1px solid rgba(59, 130, 246, 0.4);
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
         border-radius: 999px;
-        padding: 0.3rem 0.75rem;
-        font-size: 0.8rem;
+        border: 1px solid rgba(37, 99, 235, 0.25);
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent);
+        font-size: 0.78rem;
         letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
       .badge.critical {
-        background: rgba(248, 113, 113, 0.18);
-        border-color: rgba(248, 113, 113, 0.5);
+        border-color: rgba(220, 38, 38, 0.3);
+        background: rgba(220, 38, 38, 0.12);
+        color: var(--danger);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .pill.danger {
+        border-color: rgba(220, 38, 38, 0.3);
+        background: rgba(220, 38, 38, 0.12);
+        color: var(--danger);
+      }
+
+      .pill.warn {
+        border-color: rgba(249, 115, 22, 0.3);
+        background: rgba(249, 115, 22, 0.12);
+        color: var(--warning);
+      }
+
+      .pill.success {
+        border-color: rgba(22, 163, 74, 0.3);
+        background: rgba(22, 163, 74, 0.12);
+        color: var(--success);
+      }
+
+      .list-card.critical {
+        border-color: rgba(220, 38, 38, 0.28);
+        background: rgba(220, 38, 38, 0.1);
       }
 
       .insight-list {
         list-style: none;
-        margin: 0;
         padding: 0;
+        margin: 0;
         display: grid;
-        gap: 0.8rem;
+        gap: 0.9rem;
       }
 
       .insight-list li {
         border: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.6);
-        border-radius: 12px;
-        padding: 0.85rem 1rem;
-        line-height: 1.4;
+        background: var(--surface-soft);
+        border-radius: 16px;
+        padding: 0.9rem 1.1rem;
+        line-height: 1.5;
       }
 
       .leaderboard {
         list-style: none;
-        margin: 0;
         padding: 0;
+        margin: 0;
         display: grid;
         gap: 0.6rem;
       }
@@ -373,197 +629,369 @@
       .leaderboard li {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
-        padding-bottom: 0.3rem;
+        border-bottom: 1px dashed var(--border);
+        padding-bottom: 0.4rem;
+        font-size: 0.9rem;
       }
 
-      .metric-large {
-        font-size: 1.8rem;
-        font-weight: 700;
+      .list-group {
+        display: grid;
+        gap: 0.9rem;
       }
 
-      .subtext {
-        font-size: 0.8rem;
-        color: var(--muted);
+      .muted {
+        color: var(--text-muted);
       }
 
-      footer {
-        padding: 1.1rem 2rem;
+      .warning-text {
+        color: var(--warning);
+        font-size: 0.82rem;
+      }
+
+      .app-footer {
+        margin-top: auto;
+        padding: 18px 40px 32px;
         text-align: right;
-        color: var(--muted);
-        border-top: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.7);
+        font-size: 0.85rem;
+        color: var(--text-muted);
       }
 
-      @media (max-width: 768px) {
-        header {
-          flex-direction: column;
-          gap: 1rem;
-          text-align: center;
+      @media (max-width: 1300px) {
+        .layout-columns {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1200px) {
+        .sidebar {
+          position: relative;
+          height: auto;
+          width: 230px;
         }
 
-        main {
-          padding: 1.4rem;
+        .top-bar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .top-bar__meta {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .app-shell {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: relative;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .top-bar {
+          padding: 26px 24px 16px;
+        }
+
+        .content-grid {
+          padding: 0 24px 32px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .top-bar__meta {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        section.panel {
+          padding: 22px;
         }
       }
     </style>
   </head>
   <body>
-    <header>
-      <div>
-        <h1>Project Sentinel</h1>
-        <p class="muted">Customer Experience Operations Command Center</p>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar__brand">
+          <div class="sidebar__title">
+            <span class="sidebar__logo">PS</span>
+            <span>Project Sentinel</span>
+          </div>
+          <p class="sidebar__subtitle">Customer Experience Command Center</p>
+        </div>
+        <nav class="sidebar__nav">
+          <a href="#overall-section">Store Pulse</a>
+          <a href="#queue-section">Queue Stations</a>
+          <a href="#staffing-section">Staffing</a>
+          <a href="#alerts-section">Critical Alerts</a>
+          <a href="#suspicious-section">Suspicious Checkouts</a>
+          <a href="#detections-section">Detection Feed</a>
+          <a href="#correlations-section">Correlated Checkouts</a>
+          <a href="#correlation-radar-section">Correlation Radar</a>
+          <a href="#inventory-section">Inventory</a>
+          <a href="#insights-section">Insights</a>
+          <a href="#stream-section">Stream Health</a>
+          <a href="#evaluation-section">Evaluation</a>
+        </nav>
+        <div class="sidebar__support">
+          Seamless operations overview across queue, RFID, POS, and vision telemetry.
+        </div>
+      </aside>
+
+      <div class="app-main">
+        <header class="top-bar">
+          <div class="top-bar__titles">
+            <h1>Live operations overview</h1>
+            <p class="muted">AI-assisted loss prevention, queue intelligence, and inventory protection insights refreshed continuously.</p>
+          </div>
+          <div class="top-bar__meta">
+            <div class="status-chip">
+              <span class="status-dot"></span>
+              <span id="system-status">Live</span>
+            </div>
+            <div class="sync-indicator">
+              <span>Last sync</span>
+              <strong id="last-updated">--</strong>
+            </div>
+          </div>
+        </header>
+
+        <main class="content-grid">
+          <section id="overall-section" class="panel panel--hero panel--wide">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Store Pulse</h2>
+                <p class="panel__hint">Unified signal across dwell, staffing, and in-store telemetry.</p>
+              </div>
+              <div class="panel__meta">
+                <span class="chip chip--outline" id="system-status-text">--</span>
+              </div>
+            </div>
+            <div class="hero-grid">
+              <article class="hero-card">
+                <h3>Overall Health</h3>
+                <div id="overall-health" class="metric-large">--</div>
+                <div class="hero-subtext">Current state</div>
+              </article>
+              <article class="hero-card">
+                <h3>Total Customers</h3>
+                <div id="total-customers" class="metric-large">--</div>
+                <div class="hero-subtext">Active stations: <span id="active-stations">--</span></div>
+              </article>
+              <article class="hero-card">
+                <h3>Staffing Focus</h3>
+                <div id="staffing-recommendation" style="font-size: 1.2rem; font-weight: 600">--</div>
+                <div class="hero-subtext">Target per station: <span id="target-per-station">--</span></div>
+              </article>
+            </div>
+            <div class="hero-chart">
+              <svg id="overall-history-chart" viewBox="0 0 320 90" preserveAspectRatio="none"></svg>
+              <div class="history-summary">
+                <span id="overall-trend">Trend --</span>
+                <span id="overall-load">Load --</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="layout-columns">
+            <div class="column column--primary">
+              <section id="queue-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Queue Stations</h2>
+                    <p class="panel__hint">Live dwell, health scores, and throughput by kiosk.</p>
+                  </div>
+                </div>
+                <div class="cards" id="stations"></div>
+              </section>
+
+              <section id="staffing-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Staffing Insights</h2>
+                    <p class="panel__hint">Match floor associates to forecasted demand.</p>
+                  </div>
+                </div>
+                <div id="staffing-kpis" class="grid-two"></div>
+              </section>
+
+              <section id="alerts-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Critical Alerts</h2>
+                    <p class="panel__hint">Immediate incidents surfaced from computer vision and queue analytics.</p>
+                  </div>
+                </div>
+                <div id="alerts"></div>
+              </section>
+
+              <section id="suspicious-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Suspicious Checkouts</h2>
+                    <p class="panel__hint">Risky behaviors flagged for manual intervention.</p>
+                  </div>
+                </div>
+                <div id="suspicious"></div>
+              </section>
+
+              <section id="detections-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Detection Feed</h2>
+                    <p class="panel__hint">Recent detector outputs with contextual evidence.</p>
+                  </div>
+                </div>
+                <div id="detections" class="list-group"></div>
+              </section>
+            </div>
+
+            <div class="column column--secondary">
+              <section id="correlations-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Correlated Checkouts</h2>
+                    <p class="panel__hint">Cross-signal alignment across POS, RFID, and vision.</p>
+                  </div>
+                </div>
+                <div class="list-group" id="correlations"></div>
+              </section>
+
+              <section id="correlation-radar-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Correlation Radar</h2>
+                    <p class="panel__hint">Top SKUs and stations under investigation.</p>
+                  </div>
+                </div>
+                <div class="grid-two">
+                  <div class="stat-box">
+                    <div class="muted">Top Correlated SKUs</div>
+                    <ul id="correlated-skus" class="leaderboard"></ul>
+                  </div>
+                  <div class="stat-box">
+                    <div class="muted">Stations Under Watch</div>
+                    <ul id="stations-under-watch" class="leaderboard"></ul>
+                  </div>
+                </div>
+                <div>
+                  <h3>Recent Correlations</h3>
+                  <div id="recent-correlations" class="list-group"></div>
+                </div>
+              </section>
+
+              <section id="inventory-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Inventory Watch</h2>
+                    <p class="panel__hint">Shrinkage exposure, high-value watch list, and SKU deltas.</p>
+                  </div>
+                </div>
+                <div class="grid-two">
+                  <div class="stat-box">
+                    <div class="muted">Shrinkage Value</div>
+                    <div id="inventory-shrinkage-value" class="metric-large">--</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="muted">Shrinkage Units</div>
+                    <div id="inventory-shrinkage-units" class="metric-large">--</div>
+                  </div>
+                  <div class="stat-box" style="grid-column: 1 / -1;">
+                    <div class="muted">Actual Inventory Value</div>
+                    <div id="inventory-actual-value" class="metric-large">--</div>
+                    <div class="muted" id="inventory-expected-value">Expected --</div>
+                  </div>
+                </div>
+                <div class="list-group">
+                  <div>
+                    <h3>Shrinkage Alerts</h3>
+                    <div id="inventory-alerts" class="list-group"></div>
+                  </div>
+                  <div>
+                    <h3>High-Value Watchlist</h3>
+                    <div id="inventory-high-value" class="list-group"></div>
+                  </div>
+                  <div>
+                    <h3>Top Shrinkage SKUs</h3>
+                    <div id="inventory-top-shrink"></div>
+                  </div>
+                </div>
+              </section>
+
+              <section id="insights-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Operational Insights</h2>
+                    <p class="panel__hint">Latest analyst notes, AI findings, and narrative summaries.</p>
+                  </div>
+                </div>
+                <ul id="insights" class="insight-list"></ul>
+              </section>
+
+              <section id="stream-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Data Feed Health</h2>
+                    <p class="panel__hint">Dataset throughput, freshness, and stream reader uptime.</p>
+                  </div>
+                </div>
+                <div class="grid-two">
+                  <div class="stat-box">
+                    <div class="muted">Events last minute</div>
+                    <div id="stream-events-minute" class="metric-large">--</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="muted">Events per minute</div>
+                    <div id="stream-events-rate" class="metric-large">--</div>
+                    <div class="muted" id="stream-last-event">Last event --</div>
+                  </div>
+                </div>
+                <div>
+                  <h3>Active Datasets</h3>
+                  <div id="stream-datasets" class="badge-row"></div>
+                </div>
+                <div>
+                  <h3>Dataset Throughput</h3>
+                  <div id="stream-dataset-cards" class="list-group"></div>
+                </div>
+                <div>
+                  <h3>Stream Reader</h3>
+                  <div id="stream-reader-status" class="list-group"></div>
+                  <ul id="stream-warnings" class="insight-list" style="margin-top: 0.8rem"></ul>
+                </div>
+              </section>
+
+              <section id="evaluation-section" class="panel">
+                <div class="panel__header">
+                  <div>
+                    <h2 class="panel__title">Pipeline Evaluation</h2>
+                    <p class="panel__hint">Precision/recall metrics and exceptions from the latest regression.
+                    </p>
+                  </div>
+                </div>
+                <div id="evaluation-cards" class="grid-auto"></div>
+                <div>
+                  <h3>Exceptions</h3>
+                  <div id="evaluation-exceptions" class="list-group"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </main>
+
+        <footer class="app-footer">
+          Sentinel CX Analytics · Powered by Python standard library &amp; vanilla JS
+        </footer>
       </div>
-      <div class="status-chip">
-        <span class="health-indicator health-optimal"></span>
-        <span id="system-status">Live</span>
-      </div>
-    </header>
-
-    <main>
-      <section id="overall-section">
-        <h2>
-          Store Pulse
-          <span class="muted" id="last-updated">--</span>
-        </h2>
-        <div class="grid-three" id="overall-metrics">
-          <div class="stat-box">
-            <div class="muted">Overall Health</div>
-            <div id="overall-health" class="metric-large">--</div>
-            <div class="muted" id="system-status-text">--</div>
-          </div>
-
-          <div class="stat-box">
-            <div class="muted">Total Customers</div>
-            <div id="total-customers" style="font-size: 1.4rem; font-weight: 600">--</div>
-            <div class="muted">Active stations: <span id="active-stations">--</span></div>
-          </div>
-
-          <div class="stat-box">
-            <div class="muted">Staffing Recommendation</div>
-            <div id="staffing-recommendation" style="font-size: 1rem">--</div>
-            <div class="muted">Target per station: <span id="target-per-station">--</span></div>
-          </div>
-        </div>
-        <div class="history-chart">
-          <svg id="overall-history-chart" viewBox="0 0 320 90" preserveAspectRatio="none"></svg>
-          <div class="history-summary">
-            <span id="overall-trend">Trend --</span>
-            <span id="overall-load">Load --</span>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2>Queue Stations</h2>
-        <div class="cards" id="stations"></div>
-      </section>
-
-      <section>
-        <h2>Staffing Insights</h2>
-        <div id="staffing-kpis" class="grid-two"></div>
-      </section>
-
-      <section>
-        <h2>Critical Alerts</h2>
-        <div id="alerts"></div>
-      </section>
-
-      <section>
-        <h2>Suspicious Checkouts</h2>
-        <div id="suspicious"></div>
-      </section>
-
-      <section>
-        <h2>Correlated Checkouts</h2>
-        <div id="correlations"></div>
-      </section>
-
-      <section>
-        <h2>Detection Feed</h2>
-        <div id="detections" class="list-group"></div>
-      </section>
-
-      <section id="inventory-section">
-        <h2>Inventory Watch</h2>
-        <div class="grid-two">
-          <div class="stat-box">
-            <div class="muted">Shrinkage Value</div>
-            <div id="inventory-shrinkage-value" class="metric-large">--</div>
-          </div>
-          <div class="stat-box">
-            <div class="muted">Shrinkage Units</div>
-            <div id="inventory-shrinkage-units" class="metric-large">--</div>
-          </div>
-          <div class="stat-box">
-            <div class="muted">Actual Inventory Value</div>
-            <div id="inventory-actual-value" class="metric-large">--</div>
-            <div class="subtext" id="inventory-expected-value">Expected --</div>
-          </div>
-        </div>
-        <h3>Shrinkage Alerts</h3>
-        <div id="inventory-alerts" class="list-group"></div>
-        <h3>High-Value Watchlist</h3>
-        <div id="inventory-high-value" class="list-group"></div>
-        <h3>Top Shrinkage SKUs</h3>
-        <div id="inventory-top-shrink"></div>
-      </section>
-
-      <section>
-        <h2>Operational Insights</h2>
-        <ul id="insights" class="insight-list"></ul>
-      </section>
-
-      <section>
-        <h2>Correlation Radar</h2>
-        <div class="grid-two">
-          <div class="stat-box">
-            <div class="muted">Top Correlated SKUs</div>
-            <ul id="correlated-skus" class="leaderboard"></ul>
-          </div>
-          <div class="stat-box">
-            <div class="muted">Stations Under Watch</div>
-            <ul id="stations-under-watch" class="leaderboard"></ul>
-          </div>
-        </div>
-        <h3>Recent Correlations</h3>
-        <div id="recent-correlations" class="list-group"></div>
-      </section>
-
-      <section>
-        <h2>Data Feed Health</h2>
-        <div class="grid-two">
-          <div class="stat-box">
-            <div class="muted">Events last minute</div>
-            <div id="stream-events-minute" class="metric-large">--</div>
-          </div>
-          <div class="stat-box">
-            <div class="muted">Events per minute</div>
-            <div id="stream-events-rate" class="metric-large">--</div>
-            <div class="subtext" id="stream-last-event">Last event --</div>
-          </div>
-        </div>
-        <h3>Active Datasets</h3>
-        <div id="stream-datasets" class="badge-row"></div>
-        <h3>Dataset Throughput</h3>
-        <div id="stream-dataset-cards" class="list-group"></div>
-        <h3>Stream Reader</h3>
-  <div id="stream-reader-status" class="list-group"></div>
-  <ul id="stream-warnings" class="insight-list" style="margin-top: 0.8rem"></ul>
-      </section>
-
-      <section id="evaluation-section">
-        <h2>Pipeline Evaluation</h2>
-  <div id="evaluation-cards" class="grid-auto"></div>
-        <h3>Exceptions</h3>
-        <div id="evaluation-exceptions" class="list-group"></div>
-      </section>
-    </main>
-
-    <footer>
-      Sentinel CX Analytics · Powered by Python standard library & vanilla JS
-    </footer>
+    </div>
 
     <script>
       const apiHost = window.location.hostname || "localhost";
@@ -626,15 +1054,15 @@
           const card = document.createElement("div");
           card.className = "station-card";
           card.innerHTML = `
-            <div style="display:flex; justify-content: space-between; align-items:center;">
+            <div style="display:flex; justify-content: space-between; align-items:center; position:relative; z-index:1;">
               <div class="station-id">${station.station_id}</div>
               <span class="health-indicator ${indicator}"></span>
             </div>
-            <div class="metric"><span>Health score</span><strong>${station.health_score ?? "--"}</strong></div>
-            <div class="metric"><span>Queue length</span><span>${station.customer_count ?? "--"} customers</span></div>
-            <div class="metric"><span>Dwell time</span><span>${station.average_dwell_time ?? "--"}s</span></div>
-            <div class="metric"><span>Service rate</span><span>${station.service_rate ?? "--"}/min</span></div>
-            <div class="metric"><span>Status</span><span style="text-transform: capitalize;">${station.status ?? "--"}</span></div>
+            <div class="metric" style="position:relative; z-index:1;"><span>Health score</span><strong>${station.health_score ?? "--"}</strong></div>
+            <div class="metric" style="position:relative; z-index:1;"><span>Queue length</span><span>${station.customer_count ?? "--"} customers</span></div>
+            <div class="metric" style="position:relative; z-index:1;"><span>Dwell time</span><span>${station.average_dwell_time ?? "--"}s</span></div>
+            <div class="metric" style="position:relative; z-index:1;"><span>Service rate</span><span>${station.service_rate ?? "--"}/min</span></div>
+            <div class="metric" style="position:relative; z-index:1;"><span>Status</span><span style="text-transform: capitalize;">${station.status ?? "--"}</span></div>
           `;
           container.appendChild(card);
         });
@@ -697,7 +1125,6 @@
       }
 
       function renderCorrelations(correlations) {
-        // correlations may include recent_correlations, top_correlated_skus, stations_under_watch
         const container = document.getElementById("correlations");
         container.innerHTML = "";
         const recents = (correlations && correlations.recent_correlations) || correlations?.recent || [];
@@ -717,16 +1144,23 @@
           });
         }
 
-        // leaderboards and recent correlations details
-        renderLeaderboard(document.getElementById("correlated-skus"), correlations?.top_correlated_skus || [], (entry) => ({
-          label: Array.isArray(entry) ? entry[0] : entry.sku || "SKU",
-          value: Array.isArray(entry) ? entry[1] : entry.count || entry.score || "--",
-        }));
+        renderLeaderboard(
+          document.getElementById("correlated-skus"),
+          correlations?.top_correlated_skus || [],
+          (entry) => ({
+            label: Array.isArray(entry) ? entry[0] : entry.sku || "SKU",
+            value: Array.isArray(entry) ? entry[1] : entry.count || entry.score || "--",
+          })
+        );
 
-        renderLeaderboard(document.getElementById("stations-under-watch"), correlations?.stations_under_watch || [], (entry) => ({
-          label: Array.isArray(entry) ? entry[0] : entry.station_id || "station",
-          value: Array.isArray(entry) ? entry[1] : entry.count || "--",
-        }));
+        renderLeaderboard(
+          document.getElementById("stations-under-watch"),
+          correlations?.stations_under_watch || [],
+          (entry) => ({
+            label: Array.isArray(entry) ? entry[0] : entry.station_id || "station",
+            value: Array.isArray(entry) ? entry[1] : entry.count || "--",
+          })
+        );
 
         const recentContainer = document.getElementById("recent-correlations");
         recentContainer.innerHTML = "";
@@ -735,16 +1169,19 @@
           recentContainer.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
           return;
         }
-        recentsList.slice(-5).reverse().forEach((item) => {
-          const card = document.createElement("div");
-          card.className = "list-card";
-          card.innerHTML = `
-            <strong>${item.sku || "SKU"} @ ${item.station_id || "--"}</strong>
-            <span class="muted">Confidence ${(item.confidence ?? 0).toFixed(2)} · RFID ${item.rfid_matches ?? 0} · Vision ${item.vision_matches ?? 0}</span>
-            <span class="muted">${new Date(item.timestamp || Date.now()).toLocaleTimeString()}</span>
-          `;
-          recentContainer.appendChild(card);
-        });
+        recentsList
+          .slice(-5)
+          .reverse()
+          .forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "list-card";
+            card.innerHTML = `
+              <strong>${item.sku || "SKU"} @ ${item.station_id || "--"}</strong>
+              <span class="muted">Confidence ${(item.confidence ?? 0).toFixed(2)} · RFID ${item.rfid_matches ?? 0} · Vision ${item.vision_matches ?? 0}</span>
+              <span class="muted">${new Date(item.timestamp || Date.now()).toLocaleTimeString()}</span>
+            `;
+            recentContainer.appendChild(card);
+          });
       }
 
       function renderDetections(events) {
@@ -762,8 +1199,7 @@
           const details = event.details || {};
           const type = toTitleCase(details.type || details.event_type || "Detection");
           const confidenceRaw = details.confidence;
-          const confidenceValue =
-            typeof confidenceRaw === "number" ? confidenceRaw : Number.parseFloat(confidenceRaw);
+          const confidenceValue = typeof confidenceRaw === "number" ? confidenceRaw : Number.parseFloat(confidenceRaw);
           const hasConfidence = Number.isFinite(confidenceValue);
           const evidence = details.evidence || details.attributes;
           let evidenceSummary = "";
@@ -947,8 +1383,8 @@
               const timestamp = insight.timestamp ? new Date(insight.timestamp).toLocaleTimeString() : "";
               li.innerHTML = `
                 <strong>${primary}</strong>
-                <div class="subtext">${[analyst, focus].filter(Boolean).join(" · ")}</div>
-                ${timestamp ? `<div class="subtext">${timestamp}</div>` : ""}
+                <div class="muted">${[analyst, focus].filter(Boolean).join(" · ")}</div>
+                ${timestamp ? `<div class="muted">${timestamp}</div>` : ""}
               `;
             }
             container.appendChild(li);
@@ -1006,12 +1442,11 @@
         });
 
         const baselineScore = Math.min(Math.max(100, minScore), maxScore);
-        const baseline =
-          height - ((baselineScore - minScore) / range) * (height - 12) - 6;
+        const baseline = height - ((baselineScore - minScore) / range) * (height - 12) - 6;
 
         svg.innerHTML = `
-          <polyline points="${points.join(" ")}" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
-          <line x1="${leftPad}" y1="${baseline.toFixed(1)}" x2="${width - rightPad}" y2="${baseline.toFixed(1)}" stroke="rgba(148,163,184,0.25)" stroke-dasharray="4 5" />
+          <polyline points="${points.join(" ")}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" />
+          <line x1="${leftPad}" y1="${baseline.toFixed(1)}" x2="${width - rightPad}" y2="${baseline.toFixed(1)}" stroke="rgba(148,163,184,0.35)" stroke-dasharray="4 5" />
         `;
 
         const delta = scores[scores.length - 1] - scores[0];
@@ -1214,7 +1649,7 @@
           if (items.length > 5) {
             const more = document.createElement("span");
             more.className = "muted";
-            more.textContent = `+${items.length - 5} additional`; 
+            more.textContent = `+${items.length - 5} additional`;
             card.appendChild(more);
           }
           exceptions.appendChild(card);
