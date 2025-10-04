@@ -1,65 +1,134 @@
-"""Normalization helpers for Project Sentinel streaming datasets.
+"""Merged normalization utilities for Project Sentinel.
 
-This module exposes a small contract for converting heterogeneous raw
-payloads into a consistent, analytics-friendly structure.  The
-`NormalizedRecord` dataclass captures the canonical schema and keeps the
-timestamp as a :class:`datetime.datetime` object for easy sorting before
-export.  Conversion utilities support both offline JSONL files (used for
-deterministic demo runs) and frames produced by the realtime simulator.
+This module unifies two previous implementations:
+- a rich NormalizedRecord-based normalizer (file-oriented and frame-oriented),
+- a lightweight SentinelEvent parser for raw stream frames.
 
-Example
--------
->>> from pathlib import Path
->>> from src.pipeline.transform import iter_jsonl_records
->>> data_root = Path('data/input')
->>> records = list(iter_jsonl_records(data_root / 'pos_transactions.jsonl'))
->>> records[0].dataset
-'pos_transactions'
+The file provides helpers to parse JSONL files, parse raw TCP stream frames,
+convert them into a SentinelEvent and/or NormalizedRecord, and export a
+small, predictable public API for downstream analytics.
 
-The resulting records can then be enriched with lookup metadata via
-``src.pipeline.joiners`` or serialized to JSON with
-``NormalizedRecord.to_dict``.
+If you want the file split into `realtime.py` and `batch.py` or need
+pytest tests, tell me and I'll create them in the canvas.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-import json
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple
 
 
-# ---------------------------------------------------------------------------
-# Public data model
-# ---------------------------------------------------------------------------
+# -----------------------------
+# Robust timestamp parsing
+# -----------------------------
 
+def _parse_timestamp(value: Any) -> datetime:
+    """Best-effort ISO-8601 parsing with common fallbacks.
+
+    Accepts datetime objects or ISO-like strings (with or without "Z").
+    Falls back to :class:`ValueError` for invalid input so callers may
+    decide how to recover.
+    """
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str):
+        raise ValueError(f"Expected ISO timestamp string or datetime, got {value!r}")
+    try:
+        # accept trailing Z as UTC
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise ValueError(f"Invalid ISO timestamp: {value!r}") from exc
+
+
+# -----------------------------
+# SentinelEvent (stream parser)
+# -----------------------------
+
+@dataclass(slots=True)
+class SentinelEvent:
+    """Canonical representation of a record emitted by the stream server.
+
+    Fields are intentionally minimal: downstream code may convert a
+    SentinelEvent into a richer NormalizedRecord.
+    """
+
+    dataset: str
+    timestamp: datetime
+    station_id: Optional[str]
+    payload: Dict[str, Any]
+    sequence: Optional[int] = None
+    raw: Optional[Dict[str, Any]] = None
+
+    def as_dict(self) -> Dict[str, Any]:
+        base: Dict[str, Any] = {
+            "dataset": self.dataset,
+            "timestamp": self.timestamp.isoformat(timespec="milliseconds"),
+            "station_id": self.station_id,
+            "sequence": self.sequence,
+            "payload": self.payload,
+        }
+        if self.raw is not None:
+            base["raw"] = self.raw
+        return base
+
+
+def normalize_event(raw_line: bytes) -> Optional[SentinelEvent]:
+    """Parse a raw newline-delimited JSON frame into a SentinelEvent.
+
+    Returns ``None`` for non-JSON frames or frames that do not contain a
+    valid dataset/timestamp. Callers should ignore ``None`` results.
+    """
+    try:
+        obj = json.loads(raw_line)
+    except Exception:
+        return None
+
+    dataset = obj.get("dataset")
+    if not isinstance(dataset, str):
+        return None
+
+    payload = obj.get("event")
+    if not isinstance(payload, dict):
+        payload = {}
+
+    timestamp_str = obj.get("timestamp") or payload.get("timestamp")
+    if not isinstance(timestamp_str, str):
+        return None
+
+    try:
+        timestamp = _parse_timestamp(timestamp_str)
+    except ValueError:
+        return None
+
+    station_id = payload.get("station_id")
+    if station_id is not None and not isinstance(station_id, str):
+        station_id = str(station_id)
+
+    seq = obj.get("sequence") if isinstance(obj.get("sequence"), int) else None
+
+    return SentinelEvent(
+        dataset=dataset,
+        timestamp=timestamp,
+        station_id=station_id,
+        payload=payload,
+        sequence=seq,
+        raw=obj,
+    )
+
+
+# -----------------------------
+# NormalizedRecord (analytics-friendly)
+# -----------------------------
 
 @dataclass(slots=True)
 class NormalizedRecord:
-    """Canonical representation of a streaming payload.
+    """Canonical representation of a streaming payload used by analytics.
 
-    Attributes
-    ----------
-    dataset:
-        Canonical dataset identifier (snake_case, e.g. ``pos_transactions``).
-    timestamp:
-        Parsed event timestamp as a naive ``datetime`` (source data is in
-        local time without an explicit timezone).
-    station_id:
-        Checkout station identifier when present.
-    status:
-        Source system status field (e.g. ``"Active"`` for POS events).
-    sku:
-        Product SKU associated with the event when available.
-    customer_id:
-        ID of the customer involved in the event when available.
-    attributes:
-        Dataset-specific payload (deep-copied to avoid mutating inputs).
-    metadata:
-        Optional auxiliary fields carried alongside the record (e.g.
-        stream sequence numbers).  Metadata is not exported by default but
-        can be surfaced by callers if required.
+    This mirrors the earlier NormalizedRecord contract and keeps the
+    timestamp as a ``datetime`` for easy sorting and grouping.
     """
 
     dataset: str
@@ -72,18 +141,6 @@ class NormalizedRecord:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self, *, include_metadata: bool = False) -> Dict[str, Any]:
-        """Serialize the record to a JSON-friendly dictionary.
-
-        ``None`` values are omitted to keep the payload compact.
-        ``attributes`` are shallow-copied and filtered in the same way.
-
-        Parameters
-        ----------
-        include_metadata:
-            When ``True`` the optional ``metadata`` dictionary is included
-            under the ``metadata`` key.
-        """
-
         base: Dict[str, Any] = {
             "dataset": self.dataset,
             "timestamp": self.timestamp.isoformat(),
@@ -96,35 +153,20 @@ class NormalizedRecord:
             base["sku"] = self.sku
         if self.customer_id is not None:
             base["customer_id"] = self.customer_id
-
         if self.attributes:
             attrs = {k: v for k, v in self.attributes.items() if v is not None}
             if attrs:
                 base["attributes"] = attrs
-
         if include_metadata and self.metadata:
             base["metadata"] = dict(self.metadata)
-
         return base
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
+# -----------------------------
+# Dataset normalizers
+# -----------------------------
 
 _DatasetNormalizer = Callable[[Mapping[str, Any]], NormalizedRecord]
-
-
-def _parse_timestamp(value: Any) -> datetime:
-    if isinstance(value, datetime):
-        return value
-    if not isinstance(value, str):
-        raise ValueError(f"Expected ISO timestamp string, got {value!r}")
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(f"Invalid ISO timestamp: {value!r}") from exc
 
 
 def _copy_payload(data: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
@@ -154,11 +196,7 @@ def _make_record(
 
 def _normalize_inventory(payload: Mapping[str, Any]) -> NormalizedRecord:
     data = _copy_payload(payload.get("data"))
-    return _make_record(
-        "inventory_snapshots",
-        payload,
-        attributes={"inventory": data},
-    )
+    return _make_record("inventory_snapshots", payload, attributes={"inventory": data})
 
 
 def _normalize_queue(payload: Mapping[str, Any]) -> NormalizedRecord:
@@ -233,9 +271,7 @@ _ALIASES: Dict[str, str] = {
 }
 
 
-DEFAULT_DATASETS: tuple[str, ...] = tuple(
-    sorted({alias for alias in _ALIASES.values()})
-)
+DEFAULT_DATASETS: Tuple[str, ...] = tuple(sorted({alias for alias in _ALIASES.values()}))
 
 
 def canonical_dataset(name: str) -> str:
@@ -246,14 +282,9 @@ def canonical_dataset(name: str) -> str:
 
 
 def normalize_payload(dataset: str, payload: Mapping[str, Any]) -> NormalizedRecord:
-    """Normalize a payload belonging to ``dataset``.
+    """Normalize a raw payload belonging to ``dataset`` into NormalizedRecord.
 
-    Parameters
-    ----------
-    dataset:
-        Dataset identifier (any alias accepted).
-    payload:
-        Mapping containing the raw event payload (as parsed from JSON).
+    Accepts any alias for ``dataset`` (as defined in ``_ALIASES``).
     """
 
     canonical = canonical_dataset(dataset)
@@ -266,8 +297,12 @@ def normalize_payload(dataset: str, payload: Mapping[str, Any]) -> NormalizedRec
 
 
 def normalize_stream_frame(frame: Mapping[str, Any]) -> NormalizedRecord:
-    """Normalize a frame emitted by the TCP streaming server."""
+    """Normalize a streaming frame (dictionary) into a NormalizedRecord.
 
+    This accepts the same frames produced by the stream server (a mapping
+    with keys like ``dataset`` and ``event``).  It preserves a subset of
+    useful metadata (sequence, original timestamp).
+    """
     dataset = frame.get("dataset")
     if not dataset:
         raise ValueError("Stream frame missing 'dataset'")
@@ -277,24 +312,37 @@ def normalize_stream_frame(frame: Mapping[str, Any]) -> NormalizedRecord:
 
     record = normalize_payload(dataset, payload)
 
-    # Preserve useful metadata like sequence numbers and original timestamps.
-    extras = {
-        key: frame[key]
-        for key in ("sequence", "original_timestamp", "timestamp")
-        if key in frame
-    }
+    extras = {k: frame[k] for k in ("sequence", "original_timestamp", "timestamp") if k in frame}
     if extras:
         record.metadata.update(extras)
     return record
 
 
+def sentinel_to_normalized(event: SentinelEvent) -> NormalizedRecord:
+    """Convenience converter: SentinelEvent -> NormalizedRecord.
+
+    Uses ``event.payload`` as the payload argument to the regular
+    normalizers.  Adds minimal metadata (sequence, raw frame) for tracing.
+    """
+    record = normalize_payload(event.dataset, event.payload)
+    if event.sequence is not None:
+        record.metadata["sequence"] = event.sequence
+    if event.raw is not None:
+        record.metadata["raw_frame"] = event.raw
+    return record
+
+
+# -----------------------------
+# File helpers
+# -----------------------------
+
+
 def iter_jsonl_records(path: Path, *, dataset: Optional[str] = None) -> Iterator[NormalizedRecord]:
     """Read a JSONL file and yield normalized records.
 
-    If ``dataset`` is not provided, the canonical dataset name is inferred
-    from the file stem.
+    If ``dataset`` is omitted the canonical dataset name is inferred from
+    the file stem and resolved via the alias map.
     """
-
     if dataset is None:
         dataset = canonical_dataset(path.stem)
 
@@ -307,12 +355,11 @@ def iter_jsonl_records(path: Path, *, dataset: Optional[str] = None) -> Iterator
             yield normalize_payload(dataset, payload)
 
 
-def load_datasets(
-    data_root: Path,
-    datasets: Optional[Iterable[str]] = None,
-) -> List[NormalizedRecord]:
-    """Load and normalize multiple datasets from a directory."""
+def load_datasets(data_root: Path, datasets: Optional[Iterable[str]] = None) -> List[NormalizedRecord]:
+    """Load and normalize multiple datasets from a directory.
 
+    Raises :class:`FileNotFoundError` if expected dataset files are missing.
+    """
     target = list(datasets) if datasets else list(DEFAULT_DATASETS)
     records: List[NormalizedRecord] = []
     for name in target:
@@ -321,16 +368,22 @@ def load_datasets(
         if not candidate.exists():
             raise FileNotFoundError(candidate)
         records.extend(iter_jsonl_records(candidate, dataset=canonical))
-
     return records
 
 
+# -----------------------------
+# Public API
+# -----------------------------
+
 __all__ = [
-    "DEFAULT_DATASETS",
+    "SentinelEvent",
+    "normalize_event",
     "NormalizedRecord",
-    "canonical_dataset",
-    "iter_jsonl_records",
-    "load_datasets",
     "normalize_payload",
     "normalize_stream_frame",
+    "sentinel_to_normalized",
+    "iter_jsonl_records",
+    "load_datasets",
+    "canonical_dataset",
+    "DEFAULT_DATASETS",
 ]
