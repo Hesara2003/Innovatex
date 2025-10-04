@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 from collections import deque
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -63,6 +63,10 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._handle_inventory_snapshot()
         elif parsed.path == "/api/integration/enriched-insights":
             self._handle_enriched_insights()
+        elif parsed.path == "/api/integration/stream-reader-status":
+            self._handle_stream_reader_status()
+        elif parsed.path == "/api/integration/evaluation-metrics":
+            self._handle_evaluation_metrics()
         else:
             self._send_not_found()
 
@@ -80,6 +84,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "inventory": inventory_latest,
             "enriched_insights": list(STATE["enriched_insights"])[-5:],
             "stream_health": compute_stream_health(),
+            "stream_reader": STATE["stream_reader_status"],
+            "evaluation_metrics": STATE["evaluation_metrics"],
         }
         self._send_json(response)
 
@@ -155,6 +161,23 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         STATE["enriched_insights"].append(payload)
         self._send_json({"status": "ok"})
 
+    def _handle_stream_reader_status(self) -> None:
+        payload = self._read_json()
+        status = STATE.get("stream_reader_status")
+        if not isinstance(status, dict):
+            status = {}
+        payload.setdefault("updated_at", datetime.now(timezone.utc).isoformat())
+        if payload.get("last_heartbeat") is None and payload.get("updated_at"):
+            payload["last_heartbeat"] = payload["updated_at"]
+        STATE["stream_reader_status"] = {**status, **payload}
+        self._send_json({"status": "ok"})
+
+    def _handle_evaluation_metrics(self) -> None:
+        payload = self._read_json()
+        payload.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+        STATE["evaluation_metrics"] = payload
+        self._send_json({"status": "ok"})
+
     # ------------------------------------------------------------------
     # Utility helpers
     # ------------------------------------------------------------------
@@ -199,13 +222,22 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
 
-STATE: Dict[str, Deque] = {
+STATE: Dict[str, object] = {
     "detection_events": deque(maxlen=200),
     "stream_events": deque(maxlen=400),
     "inventory_reports": deque(maxlen=10),
     "enriched_insights": deque(maxlen=40),
     "stream_heartbeat": deque(maxlen=900),
     "stream_dataset_recent": deque(maxlen=200),
+    "stream_dataset_last_seen": {},
+    "stream_reader_status": {
+        "connected": False,
+        "processed_events": 0,
+        "latency_ms": None,
+        "last_heartbeat": None,
+        "notes": "",
+    },
+    "evaluation_metrics": None,
 }
 
 
@@ -213,14 +245,18 @@ def record_stream_event(dataset: Optional[str]) -> None:
     now = datetime.now(timezone.utc)
     STATE["stream_heartbeat"].append(now)
     if dataset:
-        STATE["stream_dataset_recent"].append(str(dataset))
+        dataset_key = str(dataset)
+        STATE["stream_dataset_recent"].append((now, dataset_key))
+        dataset_last_seen = STATE.get("stream_dataset_last_seen")
+        if isinstance(dataset_last_seen, dict):
+            dataset_last_seen[dataset_key] = now.isoformat()
 
 
 def compute_stream_health(window_seconds: int = 60) -> Dict[str, object]:
     now = datetime.now(timezone.utc)
-    timestamps = STATE["stream_heartbeat"]
+    timestamps: Deque[datetime] = STATE["stream_heartbeat"]
 
-    while timestamps and (now - timestamps[0]).total_seconds() > 600:
+    while timestamps and (now - timestamps[0]).total_seconds() > 1800:
         timestamps.popleft()
 
     recent = [ts for ts in timestamps if (now - ts).total_seconds() <= window_seconds]
@@ -228,14 +264,71 @@ def compute_stream_health(window_seconds: int = 60) -> Dict[str, object]:
     events_per_minute = round((events_last_minute / window_seconds) * 60, 2) if window_seconds > 0 else 0.0
     last_event_age = (now - timestamps[-1]).total_seconds() if timestamps else None
 
-    datasets_window = list(STATE["stream_dataset_recent"])[-100:]
-    active_datasets = sorted({name for name in datasets_window if name})
+    dataset_events_raw = list(STATE["stream_dataset_recent"])
+    dataset_events: List[tuple[datetime, str]] = []
+    for entry in dataset_events_raw:
+        if isinstance(entry, tuple) and len(entry) == 2 and isinstance(entry[0], datetime):
+            dataset_events.append((entry[0], str(entry[1])))
+        else:
+            dataset_events.append((now, str(entry)))
+    dataset_counts_1m: Dict[str, int] = {}
+    dataset_counts_15m: Dict[str, int] = {}
+    datasets_last_seen = STATE.get("stream_dataset_last_seen", {})
+
+    trimmed: List[tuple[datetime, str]] = []
+    for ts, name in dataset_events:
+        age = (now - ts).total_seconds()
+        if age <= 1800:
+            trimmed.append((ts, name))
+            if age <= 60:
+                dataset_counts_1m[name] = dataset_counts_1m.get(name, 0) + 1
+            if age <= 900:
+                dataset_counts_15m[name] = dataset_counts_15m.get(name, 0) + 1
+    STATE["stream_dataset_recent"] = deque(trimmed, maxlen=200)
+
+    dataset_trends = []
+    for name in sorted({n for _, n in trimmed}):
+        last_seen_iso = datasets_last_seen.get(name)
+        last_seen_seconds = None
+        if last_seen_iso:
+            try:
+                last_seen_dt = datetime.fromisoformat(str(last_seen_iso))
+                last_seen_seconds = round((now - last_seen_dt).total_seconds(), 1)
+            except ValueError:
+                last_seen_seconds = None
+        dataset_trends.append(
+            {
+                "dataset": name,
+                "events_last_minute": dataset_counts_1m.get(name, 0),
+                "events_last_15_minutes": dataset_counts_15m.get(name, 0),
+                "last_seen": last_seen_iso,
+                "last_seen_seconds_ago": last_seen_seconds,
+            }
+        )
+
+    active_datasets = [trend["dataset"] for trend in dataset_trends]
+
+    reader_status = STATE.get("stream_reader_status", {})
+    if isinstance(reader_status, dict) and reader_status.get("last_heartbeat"):
+        try:
+            last_hb = datetime.fromisoformat(str(reader_status["last_heartbeat"]))
+            reader_status = {
+                **reader_status,
+                "seconds_since_heartbeat": round((now - last_hb).total_seconds(), 1),
+            }
+        except ValueError:
+            reader_status = {
+                **reader_status,
+                "seconds_since_heartbeat": None,
+            }
 
     return {
         "events_last_minute": events_last_minute,
         "events_per_minute": events_per_minute,
         "active_datasets": active_datasets,
         "last_event_seconds_ago": round(last_event_age, 1) if last_event_age is not None else None,
+        "datasets": dataset_trends,
+        "reader_status": reader_status,
     }
 
 

@@ -204,6 +204,110 @@
         text-transform: uppercase;
       }
 
+      .history-chart {
+        margin-top: 1rem;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.9rem 1rem;
+      }
+
+      .history-chart svg {
+        width: 100%;
+        height: 90px;
+        display: block;
+      }
+
+      .history-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .trend-up {
+        color: #34d399;
+      }
+
+      .trend-down {
+        color: #f87171;
+      }
+
+      .list-card.critical {
+        border-color: rgba(248, 113, 113, 0.5);
+        background: rgba(248, 113, 113, 0.15);
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+      }
+
+      .data-table th,
+      .data-table td {
+        padding: 0.6rem 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        font-size: 0.85rem;
+      }
+
+      .data-table th {
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 0.78rem;
+      }
+
+      .data-table tr:nth-child(even) {
+        background: rgba(15, 23, 42, 0.35);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(148, 163, 184, 0.15);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .pill.danger {
+        border-color: rgba(248, 113, 113, 0.5);
+        background: rgba(248, 113, 113, 0.2);
+        color: #fecaca;
+      }
+
+      .pill.warn {
+        border-color: rgba(250, 204, 21, 0.4);
+        background: rgba(250, 204, 21, 0.18);
+        color: #fef08a;
+      }
+
+      .pill.success {
+        border-color: rgba(74, 222, 128, 0.4);
+        background: rgba(74, 222, 128, 0.2);
+        color: #bbf7d0;
+      }
+
+      .warning-text {
+        color: #facc15;
+        font-size: 0.82rem;
+      }
+
+      .grid-auto {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
       .list-group {
         display: grid;
         gap: 0.9rem;
@@ -342,6 +446,13 @@
             <div class="muted">Target per station: <span id="target-per-station">--</span></div>
           </div>
         </div>
+        <div class="history-chart">
+          <svg id="overall-history-chart" viewBox="0 0 320 90" preserveAspectRatio="none"></svg>
+          <div class="history-summary">
+            <span id="overall-trend">Trend --</span>
+            <span id="overall-load">Load --</span>
+          </div>
+        </div>
       </section>
 
       <section>
@@ -395,6 +506,8 @@
         <div id="inventory-alerts" class="list-group"></div>
         <h3>High-Value Watchlist</h3>
         <div id="inventory-high-value" class="list-group"></div>
+        <h3>Top Shrinkage SKUs</h3>
+        <div id="inventory-top-shrink"></div>
       </section>
 
       <section>
@@ -433,6 +546,18 @@
         </div>
         <h3>Active Datasets</h3>
         <div id="stream-datasets" class="badge-row"></div>
+        <h3>Dataset Throughput</h3>
+        <div id="stream-dataset-cards" class="list-group"></div>
+        <h3>Stream Reader</h3>
+  <div id="stream-reader-status" class="list-group"></div>
+  <ul id="stream-warnings" class="insight-list" style="margin-top: 0.8rem"></ul>
+      </section>
+
+      <section id="evaluation-section">
+        <h2>Pipeline Evaluation</h2>
+  <div id="evaluation-cards" class="grid-auto"></div>
+        <h3>Exceptions</h3>
+        <div id="evaluation-exceptions" class="list-group"></div>
       </section>
     </main>
 
@@ -452,6 +577,27 @@
       const numberFormatter = new Intl.NumberFormat("en-US", {
         maximumFractionDigits: 1,
       });
+
+      function formatSeconds(value) {
+        if (value === null || value === undefined || Number.isNaN(value)) return "--";
+        const seconds = Number(value);
+        if (seconds < 60) return `${numberFormatter.format(seconds)}s`;
+        const minutes = seconds / 60;
+        if (minutes < 120) return `${numberFormatter.format(minutes)}m`;
+        const hours = minutes / 60;
+        if (hours < 48) return `${numberFormatter.format(hours)}h`;
+        const days = hours / 24;
+        return `${numberFormatter.format(days)}d`;
+      }
+
+      function formatTimestamp(value) {
+        if (!value) return "--";
+        try {
+          return new Date(value).toLocaleTimeString();
+        } catch (err) {
+          return value;
+        }
+      }
 
       function toTitleCase(value) {
         if (!value) return "";
@@ -679,12 +825,15 @@
 
         const alertsContainer = document.getElementById("inventory-alerts");
         const watchContainer = document.getElementById("inventory-high-value");
+        const shrinkContainer = document.getElementById("inventory-top-shrink");
         alertsContainer.innerHTML = "";
         watchContainer.innerHTML = "";
+        shrinkContainer.innerHTML = "";
 
         if (!report) {
           alertsContainer.innerHTML = '<p class="muted">Awaiting inventory snapshot.</p>';
           watchContainer.innerHTML = '<p class="muted">Awaiting inventory snapshot.</p>';
+          shrinkContainer.innerHTML = '<p class="muted">Awaiting inventory snapshot.</p>';
           return;
         }
 
@@ -727,6 +876,48 @@
             `;
             watchContainer.appendChild(card);
           });
+        }
+
+        const perSku = report.skus || {};
+        const shrinkRows = Object.entries(perSku)
+          .map(([sku, stats]) => ({ sku, ...stats }))
+          .filter((row) => Number.isFinite(row.delta_units) && row.delta_units > 0)
+          .sort((a, b) => (b.delta_value ?? 0) - (a.delta_value ?? 0))
+          .slice(0, 8);
+
+        if (shrinkRows.length === 0) {
+          shrinkContainer.innerHTML = '<p class="muted">No shrinkage detected in the monitored SKUs.</p>';
+        } else {
+          const table = document.createElement("table");
+          table.className = "data-table";
+          table.innerHTML = `
+            <thead>
+              <tr>
+                <th>SKU</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Delta</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${shrinkRows
+                .map((row) => {
+                  const value = typeof row.delta_value === "number" ? currencyFormatter.format(row.delta_value) : "--";
+                  return `
+                    <tr>
+                      <td>${row.product_name || row.sku}</td>
+                      <td>${row.expected_after_sales ?? "--"}</td>
+                      <td>${row.actual ?? "--"}</td>
+                      <td>${row.delta_units ?? "--"}</td>
+                      <td>${value}</td>
+                    </tr>
+                  `;
+                })
+                .join("")}
+            </tbody>
+          `;
+          shrinkContainer.appendChild(table);
         }
       }
 
@@ -782,31 +973,255 @@
         });
       }
 
+      function renderOverallHistory(history) {
+        const svg = document.getElementById("overall-history-chart");
+        const trendEl = document.getElementById("overall-trend");
+        const loadEl = document.getElementById("overall-load");
+        if (!svg || !trendEl || !loadEl) return;
+
+        if (!history || !Array.isArray(history.scores) || history.scores.length < 2) {
+          svg.innerHTML = '<text x="12" y="50" fill="#94a3b8">Waiting for history…</text>';
+          trendEl.textContent = "Trend --";
+          trendEl.classList.remove("trend-up", "trend-down");
+          loadEl.textContent = "Load --";
+          return;
+        }
+
+        const scores = history.scores.slice(-40);
+        const loads = Array.isArray(history.loads) ? history.loads.slice(-40) : [];
+        const width = 320;
+        const height = 90;
+        const leftPad = 6;
+        const rightPad = 6;
+        const usableWidth = width - leftPad - rightPad;
+        const minScore = Math.min(...scores, 0);
+        const maxScore = Math.max(...scores, 100);
+        const range = Math.max(maxScore - minScore, 1);
+        const pointCount = scores.length;
+        const points = scores.map((score, idx) => {
+          const ratio = pointCount === 1 ? 0 : idx / (pointCount - 1);
+          const x = leftPad + ratio * usableWidth;
+          const y = height - ((score - minScore) / range) * (height - 12) - 6;
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        });
+
+        const baselineScore = Math.min(Math.max(100, minScore), maxScore);
+        const baseline =
+          height - ((baselineScore - minScore) / range) * (height - 12) - 6;
+
+        svg.innerHTML = `
+          <polyline points="${points.join(" ")}" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+          <line x1="${leftPad}" y1="${baseline.toFixed(1)}" x2="${width - rightPad}" y2="${baseline.toFixed(1)}" stroke="rgba(148,163,184,0.25)" stroke-dasharray="4 5" />
+        `;
+
+        const delta = scores[scores.length - 1] - scores[0];
+        trendEl.textContent = `Trend ${delta >= 0 ? "+" : ""}${delta.toFixed(1)} pts`;
+        trendEl.classList.remove("trend-up", "trend-down");
+        trendEl.classList.add(delta >= 0 ? "trend-up" : "trend-down");
+
+        const latestLoad = loads.length ? loads[loads.length - 1] : null;
+        const avgWindow = loads.slice(-6);
+        const avgLoad = avgWindow.length
+          ? avgWindow.reduce((acc, value) => acc + (value ?? 0), 0) / avgWindow.length
+          : null;
+        loadEl.textContent =
+          latestLoad !== null && latestLoad !== undefined
+            ? `Load ${latestLoad} customers • avg ${avgLoad !== null ? avgLoad.toFixed(1) : "--"}`
+            : "Load --";
+      }
+
       function renderStreamHealth(health) {
-        const eventsLastMinute = health && typeof health.events_last_minute === "number" ? health.events_last_minute : null;
-        const eventsPerMinute = health && typeof health.events_per_minute === "number" ? health.events_per_minute : null;
-        const lastEventAgo = health && typeof health.last_event_seconds_ago === "number" ? health.last_event_seconds_ago : null;
-        const datasets = Array.isArray(health?.active_datasets) ? health.active_datasets : [];
+        const eventsLastMinute = Number.isFinite(health?.events_last_minute) ? health.events_last_minute : null;
+        const eventsPerMinute = Number.isFinite(health?.events_per_minute) ? health.events_per_minute : null;
+        const lastEventAgo = Number.isFinite(health?.last_event_seconds_ago) ? health.last_event_seconds_ago : null;
+        const datasets = Array.isArray(health?.datasets)
+          ? health.datasets
+          : Array.isArray(health?.active_datasets)
+          ? health.active_datasets.map((name) => ({ dataset: name }))
+          : [];
 
         document.getElementById("stream-events-minute").textContent =
           eventsLastMinute !== null ? eventsLastMinute.toString() : "--";
         document.getElementById("stream-events-rate").textContent =
           eventsPerMinute !== null ? numberFormatter.format(eventsPerMinute) : "--";
         document.getElementById("stream-last-event").textContent =
-          lastEventAgo !== null ? `Last event ${numberFormatter.format(lastEventAgo)}s ago` : "Last event --";
+          lastEventAgo !== null ? `Last event ${formatSeconds(lastEventAgo)} ago` : "Last event --";
 
-        const datasetContainer = document.getElementById("stream-datasets");
-        datasetContainer.innerHTML = "";
-        if (datasets.length === 0) {
-          datasetContainer.innerHTML = '<span class="muted">Awaiting stream activity.</span>';
+        const datasetBadges = document.getElementById("stream-datasets");
+        datasetBadges.innerHTML = "";
+        if (!datasets.length) {
+          datasetBadges.innerHTML = '<span class="muted">Awaiting stream activity.</span>';
         } else {
-          datasets.forEach((name) => {
+          datasets.forEach((dataset) => {
             const badge = document.createElement("span");
-            badge.className = "badge";
-            badge.textContent = name.toUpperCase();
-            datasetContainer.appendChild(badge);
+            const stale = Number.isFinite(dataset.last_seen_seconds_ago) && dataset.last_seen_seconds_ago > 120;
+            badge.className = `badge${stale ? " critical" : ""}`;
+            badge.textContent = (dataset.dataset || dataset).toString().toUpperCase();
+            datasetBadges.appendChild(badge);
           });
         }
+
+        const datasetCards = document.getElementById("stream-dataset-cards");
+        datasetCards.innerHTML = "";
+        if (!datasets.length) {
+          datasetCards.innerHTML = '<p class="muted">No dataset telemetry yet.</p>';
+        } else {
+          datasets
+            .slice()
+            .sort((a, b) => (b.events_last_minute ?? 0) - (a.events_last_minute ?? 0))
+            .forEach((dataset) => {
+              const stale = Number.isFinite(dataset.last_seen_seconds_ago) && dataset.last_seen_seconds_ago > 180;
+              const card = document.createElement("div");
+              card.className = `list-card${stale ? " critical" : ""}`;
+              const statusClass = stale ? "danger" : "success";
+              card.innerHTML = `
+                <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.4rem;">
+                  <strong>${(dataset.dataset || "dataset").toString().toUpperCase()}</strong>
+                  <span class="pill ${statusClass}">${stale ? "Stale" : "Healthy"}</span>
+                </div>
+                <span class="muted">Last seen ${formatSeconds(dataset.last_seen_seconds_ago)} ago (${formatTimestamp(dataset.last_seen)})</span>
+                <span class="muted">Throughput: ${dataset.events_last_minute ?? 0} / min · ${dataset.events_last_15_minutes ?? 0} in 15m</span>
+              `;
+              datasetCards.appendChild(card);
+            });
+        }
+
+        const readerContainer = document.getElementById("stream-reader-status");
+        readerContainer.innerHTML = "";
+        const reader = health?.reader_status || {};
+        const readerCard = document.createElement("div");
+        const connected = Boolean(reader.connected);
+        readerCard.className = "list-card";
+        readerCard.innerHTML = `
+          <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.4rem;">
+            <strong>${connected ? "Stream reader connected" : "Stream reader offline"}</strong>
+            <span class="pill ${connected ? "success" : "danger"}">${connected ? "Connected" : "Offline"}</span>
+          </div>
+          <span class="muted">Processed events: ${reader.processed_events ?? 0}</span>
+          <span class="muted">Last heartbeat ${formatSeconds(reader.seconds_since_heartbeat ?? null)} ago (${formatTimestamp(
+            reader.last_heartbeat
+          )})</span>
+          ${reader.latency_ms !== undefined && reader.latency_ms !== null ? `<span class="muted">Latency ${numberFormatter.format(reader.latency_ms)} ms</span>` : ""}
+          ${reader.notes ? `<span>${reader.notes}</span>` : ""}
+        `;
+        readerContainer.appendChild(readerCard);
+
+        const warnings = document.getElementById("stream-warnings");
+        warnings.innerHTML = "";
+        const staleDatasets = datasets.filter((dataset) => Number.isFinite(dataset.last_seen_seconds_ago) && dataset.last_seen_seconds_ago > 180);
+        if (staleDatasets.length) {
+          staleDatasets.forEach((dataset) => {
+            const li = document.createElement("li");
+            li.className = "warning-text";
+            li.textContent = `${(dataset.dataset || dataset).toString().toUpperCase()} idle for ${formatSeconds(
+              dataset.last_seen_seconds_ago
+            )}. Investigate ingestion.`;
+            warnings.appendChild(li);
+          });
+        } else if (!datasets.length) {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "Waiting for stream activity.";
+          warnings.appendChild(li);
+        } else {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "Stream telemetry within healthy thresholds.";
+          warnings.appendChild(li);
+        }
+      }
+
+      function renderEvaluation(metrics) {
+        const cards = document.getElementById("evaluation-cards");
+        const exceptions = document.getElementById("evaluation-exceptions");
+        if (!cards || !exceptions) return;
+
+        cards.innerHTML = "";
+        exceptions.innerHTML = "";
+
+        if (!metrics) {
+          cards.innerHTML = '<div class="stat-box"><div class="muted">Evaluation</div><div class="metric-large">--</div><div class="muted">Run evaluation to populate metrics.</div></div>';
+          const li = document.createElement("div");
+          li.className = "muted";
+          li.textContent = "No evaluation results ingested yet.";
+          exceptions.appendChild(li);
+          return;
+        }
+
+        const stats = [
+          {
+            label: "Precision",
+            value: Number.isFinite(metrics.precision) ? (metrics.precision * 100).toFixed(1) + "%" : "--",
+            note: "Share of predicted events that were correct",
+          },
+          {
+            label: "Recall",
+            value: Number.isFinite(metrics.recall) ? (metrics.recall * 100).toFixed(1) + "%" : "--",
+            note: "Coverage of reference events",
+          },
+          {
+            label: "F1 Score",
+            value: Number.isFinite(metrics.f1) ? (metrics.f1 * 100).toFixed(1) + "%" : "--",
+            note: `Support ${metrics.support ?? "--"} events`,
+          },
+        ];
+
+        stats.forEach((stat) => {
+          const card = document.createElement("div");
+          card.className = "stat-box";
+          card.innerHTML = `
+            <div class="muted">${stat.label}</div>
+            <div class="metric-large">${stat.value}</div>
+            <div class="muted">${stat.note}</div>
+          `;
+          cards.appendChild(card);
+        });
+
+        const timestamp = metrics.timestamp ? formatTimestamp(metrics.timestamp) : "--";
+        const summaryCard = document.createElement("div");
+        summaryCard.className = "stat-box";
+        summaryCard.innerHTML = `
+          <div class="muted">Last evaluated</div>
+          <div style="font-size:1.1rem; font-weight:600">${timestamp}</div>
+          <div class="muted">Fields: ${(metrics.fields || []).join(", ") || "default"}</div>
+        `;
+        cards.appendChild(summaryCard);
+
+        const fp = Array.isArray(metrics.false_positives) ? metrics.false_positives : [];
+        const fn = Array.isArray(metrics.false_negatives) ? metrics.false_negatives : [];
+
+        if (fp.length === 0 && fn.length === 0) {
+          const li = document.createElement("div");
+          li.className = "muted";
+          li.textContent = "No anomalies detected in evaluation run.";
+          exceptions.appendChild(li);
+          return;
+        }
+
+        const buildList = (title, items, tone) => {
+          if (!items.length) {
+            return;
+          }
+          const card = document.createElement("div");
+          card.className = "list-card";
+          card.innerHTML = `<strong>${title}</strong>`;
+          items.slice(0, 5).forEach((item) => {
+            const span = document.createElement("span");
+            span.className = tone === "warn" ? "warning-text" : "muted";
+            span.textContent = Array.isArray(item) ? item.join(" • ") : JSON.stringify(item);
+            card.appendChild(span);
+          });
+          if (items.length > 5) {
+            const more = document.createElement("span");
+            more.className = "muted";
+            more.textContent = `+${items.length - 5} additional`; 
+            card.appendChild(more);
+          }
+          exceptions.appendChild(card);
+        };
+
+        buildList("False positives", fp, "warn");
+        buildList("False negatives", fn, "warn");
       }
 
       async function refreshDashboard() {
@@ -828,7 +1243,9 @@
           renderCorrelations(data.correlations || {});
           renderInventory(data.inventory || null);
           renderInsights(data.enriched_insights || []);
-          renderStreamHealth(data.stream_health || {});
+          renderOverallHistory(queue.overall_history || null);
+          renderStreamHealth({ ...(data.stream_health || {}), reader_status: data.stream_reader || (data.stream_health?.reader_status ?? {}) });
+          renderEvaluation(data.evaluation_metrics || null);
         } catch (error) {
           console.error(error);
           document.getElementById("system-status").textContent = "Offline";
