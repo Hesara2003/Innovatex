@@ -1,0 +1,11 @@
+{"timestamp":"2025-08-13T16:00:00","event_id":"E000","event_data":{"event_name":"Succes Operation","station_id":"SCC1","customer_id":"C001","product_sku":"PRD_F_03"}}
+{"timestamp":"2025-08-13T16:05:45","event_id":"E001","event_data":{"event_name":"Scanner Avoidance","station_id":"SCC1","customer_id":"C004","product_sku":"PRD_S_04"}}
+{"timestamp":"2025-08-13T16:15:20","event_id":"E002","event_data":{"event_name":"Barcode Switching","station_id":"SCC1","customer_id":"C009","actual_sku":"PRD_F_08","scanned_sku":"PRD_F_07"}}
+{"timestamp":"2025-08-13T16:12:15","event_id":"E003","event_data":{"event_name":"Weight Discrepancies","station_id":"SCC1","customer_id":"C007","product_sku":"PRD_F_09","expected_weight":425,"actual_weight":680}}
+{"timestamp":"2025-08-13T16:26:45","event_id":"E004","event_data":{"event_name":"Unexpected Systems Crash","station_id":"SCC1","duration_seconds":180}}
+{"timestamp":"2025-08-13T16:30:40","event_id":"E006","event_data":{"event_name":"Long Wait_Time","station_id":"SCC3","customer_id":"C015","wait_time_seconds":350}}
+{"timestamp":"2025-08-13T16:19:50","event_id":"E005","event_data":{"event_name":"Long Queue Length","station_id":"SCC1","num_of_customers":6}}
+{"timestamp":"2025-08-13T16:19:50","event_id":"E006","event_data":{"event_name":"Long Wait Time","station_id":"SCC1","wait_time_seconds":6}}
+{"timestamp":"2025-08-13T16:19:50","event_id":"E008","event_data":{"event_name":"Staffing Needs","station_id":"SCC1","Staff_type":"Cashier"}}
+{"timestamp":"2025-08-13T16:19:50","event_id":"E009","event_data":{"event_name":"Checkout Station Action","station_id":"SCC1","Action":"Open"}}
+{"timestamp":"2025-08-13T16:19:50","event_id":"E007","event_data":{"event_name":"Inventory Discrepancy","SKU":"PRD_F_03","Expected_Inventory":150,"Actual_Inventory":120}}

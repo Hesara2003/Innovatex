@@ -1,3 +1,4 @@
+<
 # Branch plan — Hesara# Branch plan — Dilusha
 
 
@@ -10,7 +11,7 @@ Primary focus: detection algorithms and event emission.Primary focus: streaming 
 
 
 
-TasksTasks
+
 
 - Implement detectors: barcode switching, scanner avoidance, weight discrepancy.- Stabilize `streaming-server/stream_server.py` and default flags.
 
