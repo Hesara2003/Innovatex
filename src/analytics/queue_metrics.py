@@ -93,6 +93,9 @@ class QueueMetricsService:
         self.alert_history: Deque[Dict[str, object]] = deque(maxlen=incident_history)
         self._trend_window = min(history_length, 12)
         self._stagnation_threshold_minutes = 2.0
+        self._overall_score_history: Deque[float] = deque(maxlen=history_length * 2)
+        self._overall_load_history: Deque[int] = deque(maxlen=history_length * 2)
+        self._overall_timestamps: Deque[datetime] = deque(maxlen=history_length * 2)
 
         self._thresholds = {
             "dwell_warning": 240,  # seconds
@@ -359,6 +362,17 @@ class QueueMetricsService:
             if station_cards
             else 100.0
         )
+        total_customers = sum(card.get("customer_count", 0) for card in station_cards)
+        now = datetime.now(UTC)
+        self._overall_score_history.append(overall_score)
+        self._overall_load_history.append(total_customers)
+        self._overall_timestamps.append(now)
+
+        overall_history_payload = {
+            "scores": list(self._overall_score_history),
+            "loads": list(self._overall_load_history),
+            "timestamps": [ts.isoformat() for ts in self._overall_timestamps],
+        }
 
         return {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -366,6 +380,7 @@ class QueueMetricsService:
             "stations": station_cards,
             "staffing": self.calculate_staff_allocation(),
             "incidents": self.get_recent_incidents(limit=10),
+            "overall_history": overall_history_payload,
         }
 
     # ------------------------------------------------------------------
