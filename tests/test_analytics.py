@@ -81,3 +81,21 @@ def test_generate_insights_combines_kpis_and_detections() -> None:
     assert any("Schedule preventive maintenance" in msg for msg in messages)
     assert any("Inventory mismatch detected" in msg for msg in messages)
     assert len(messages) == 3
+
+
+def test_compute_kpis_with_no_queue_data() -> None:
+    kpis = compute_kpis([])
+    assert kpis["station_kpis"] == {}
+    assert all(kpis[key] is None for key in ("avg_queue_length", "peak_queue_length", "avg_wait_seconds", "peak_wait_seconds", "avg_arrival_rate_per_min"))
+
+
+def test_generate_insights_without_queue_events() -> None:
+    events: list[SentinelEvent] = []
+    detections: list[dict] = []
+    insights = generate_insights(events, detections)
+
+    assert insights["staffing"]["recommended_associates"] is None
+    assert insights["kiosk_plan"]["recommended_kiosks"] is None
+    assert insights["additional_insights"] == [
+        "Operations running within targets. Continue monitoring real-time dashboards for anomalies."
+    ]

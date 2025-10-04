@@ -235,3 +235,104 @@ def test_inventory_discrepancy_flags_large_gap(monkeypatch: pytest.MonkeyPatch) 
     assert alert["type"] == "inventory_discrepancy"
     assert alert["evidence"]["expected_quantity"] == 120
     assert alert["evidence"]["observed_quantity"] == 90
+
+
+def test_barcode_switching_prediction_expires() -> None:
+    ts = datetime(2025, 8, 13, 16, 9, 0)
+    vision_event = make_event(
+        "product_recognition",
+        station_id="SCC6",
+        timestamp=ts,
+        data={"predicted_product": "PRD_K_01", "accuracy": 0.92},
+    )
+    barcode_switching.detect_barcode_switching(vision_event)
+
+    pos_event = make_event(
+        "POS_Transactions",
+        station_id="SCC6",
+        timestamp=ts + timedelta(seconds=25),
+        data={"sku": "PRD_K_02"},
+    )
+    assert barcode_switching.detect_barcode_switching(pos_event) == []
+
+
+def test_scanner_avoidance_respects_cooldown() -> None:
+    ts = datetime(2025, 8, 13, 16, 10, 0)
+    first = make_event(
+        "RFID_data",
+        station_id="SCC7",
+        timestamp=ts,
+        data={"epc": "EPC789", "sku": "PRD_Q_01", "location": "EXIT_GATE"},
+    )
+    alerts = scanner_avoidance.detect_scanner_avoidance(first)
+    assert len(alerts) == 1
+
+    second = make_event(
+        "RFID_data",
+        station_id="SCC7",
+        timestamp=ts + timedelta(seconds=10),
+        data={"epc": "EPC789", "sku": "PRD_Q_01", "location": "OUT_OF_STORE"},
+    )
+    assert scanner_avoidance.detect_scanner_avoidance(second) == []
+
+    third = make_event(
+        "RFID_data",
+        station_id="SCC7",
+        timestamp=ts + timedelta(seconds=40),
+        data={"epc": "EPC789", "sku": "PRD_Q_01", "location": "OUT_OF_STORE"},
+    )
+    alerts = scanner_avoidance.detect_scanner_avoidance(third)
+    assert len(alerts) == 1
+
+
+def test_queue_health_ignores_small_queue() -> None:
+    event = make_event(
+        "queue_monitoring",
+        station_id="SCC8",
+        timestamp=datetime(2025, 8, 13, 16, 11, 0),
+        data={"customer_count": 3, "average_dwell_time": 60},
+    )
+    assert queue_health.detect_queue_health(event) == []
+
+
+def test_system_health_ignores_ok_status() -> None:
+    event = make_event(
+        "system_status",
+        station_id="SCC9",
+        timestamp=datetime(2025, 8, 13, 16, 12, 0),
+        data={"status": "Active"},
+    )
+    event.payload["status"] = "Active"
+    assert system_health.detect_system_health(event) == []
+
+
+def test_inventory_discrepancy_respects_cooldown(monkeypatch: pytest.MonkeyPatch) -> None:
+    inventory_discrepancy.reset_state()
+    monkeypatch.setattr(inventory_discrepancy, "_expected_cache", {"PRD_Y_01": 50}, raising=False)
+
+    first = make_event(
+        "inventory_snapshots",
+        station_id="DC2",
+        timestamp=datetime(2025, 8, 13, 16, 13, 0),
+        data={"PRD_Y_01": 30},
+    )
+    alerts = inventory_discrepancy.detect_inventory_discrepancy(first)
+    assert len(alerts) == 1
+
+    second = make_event(
+        "inventory_snapshots",
+        station_id="DC2",
+        timestamp=datetime(2025, 8, 13, 16, 18, 0),
+        data={"PRD_Y_01": 28},
+    )
+    # Cooldown is 10 minutes, so this should be suppressed
+    assert inventory_discrepancy.detect_inventory_discrepancy(second) == []
+
+    third = make_event(
+        "inventory_snapshots",
+        station_id="DC2",
+        timestamp=datetime(2025, 8, 13, 16, 24, 0),
+        data={"PRD_Y_01": 20},
+    )
+    alerts = inventory_discrepancy.detect_inventory_discrepancy(third)
+    assert len(alerts) == 1
