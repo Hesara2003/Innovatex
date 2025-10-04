@@ -62,6 +62,7 @@
         display: grid;
         gap: 1.5rem;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        align-content: start;
       }
 
       section {
@@ -179,6 +180,12 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 0.8rem;
+      }
+
+      .grid-three {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       }
 
       .stat-box {
@@ -316,14 +323,23 @@
           Store Pulse
           <span class="muted" id="last-updated">--</span>
         </h2>
-        <div class="grid-two" id="overall-metrics">
+        <div class="grid-three" id="overall-metrics">
           <div class="stat-box">
             <div class="muted">Overall Health</div>
             <div id="overall-health" class="metric-large">--</div>
+            <div class="muted" id="system-status-text">--</div>
           </div>
+
+          <div class="stat-box">
+            <div class="muted">Total Customers</div>
+            <div id="total-customers" style="font-size: 1.4rem; font-weight: 600">--</div>
+            <div class="muted">Active stations: <span id="active-stations">--</span></div>
+          </div>
+
           <div class="stat-box">
             <div class="muted">Staffing Recommendation</div>
             <div id="staffing-recommendation" style="font-size: 1rem">--</div>
+            <div class="muted">Target per station: <span id="target-per-station">--</span></div>
           </div>
         </div>
       </section>
@@ -331,6 +347,11 @@
       <section>
         <h2>Queue Stations</h2>
         <div class="cards" id="stations"></div>
+      </section>
+
+      <section>
+        <h2>Staffing Insights</h2>
+        <div id="staffing-kpis" class="grid-two"></div>
       </section>
 
       <section>
@@ -344,8 +365,13 @@
       </section>
 
       <section>
+        <h2>Correlated Checkouts</h2>
+        <div id="correlations"></div>
+      </section>
+
+      <section>
         <h2>Detection Feed</h2>
-        <div id="detection-events" class="list-group"></div>
+        <div id="detections" class="list-group"></div>
       </section>
 
       <section id="inventory-section">
@@ -486,32 +512,103 @@
         });
       }
 
-      function renderSuspicious(events) {
-        const container = document.getElementById("suspicious");
+      function renderStaffing(staffing) {
+        const container = document.getElementById("staffing-kpis");
         container.innerHTML = "";
-        if (!events || events.length === 0) {
-          container.innerHTML = '<p class="muted">All checkouts look healthy.</p>';
+        if (!staffing) {
+          container.innerHTML = '<p class="muted">Staffing data will appear once queues are active.</p>';
           return;
         }
-        events.forEach((event) => {
-          const alert = document.createElement("div");
-          alert.className = "alert high";
-          alert.innerHTML = `
-            <div class="alert-title">SKU ${event.sku || "??"} @ ${event.station_id}</div>
-            <div class="muted">${(event.reasons || []).join(", ")}</div>
-            <div class="muted">Confidence: ${(event.confidence ?? 0).toFixed(2)}</div>
+
+        const stats = [
+          {
+            label: "Active stations",
+            value: staffing.active_stations ?? "--",
+            note: "Currently serving customers",
+          },
+          {
+            label: "Required stations",
+            value: staffing.required_stations ?? "--",
+            note: "Needed to meet demand",
+          },
+          {
+            label: "Efficiency ratio",
+            value: staffing.efficiency_ratio?.toFixed(2) ?? "--",
+            note: "Customers vs. target",
+          },
+        ];
+
+        stats.forEach((item) => {
+          const box = document.createElement("div");
+          box.className = "stat-box";
+          box.innerHTML = `
+            <div class="muted">${item.label}</div>
+            <div style="font-size: 1.5rem; font-weight: 600">${item.value}</div>
+            <div class="muted">${item.note}</div>
           `;
-          container.appendChild(alert);
+          container.appendChild(box);
         });
       }
 
-      function renderDetectionEvents(events) {
-        const container = document.getElementById("detection-events");
+      function renderCorrelations(correlations) {
+        // correlations may include recent_correlations, top_correlated_skus, stations_under_watch
+        const container = document.getElementById("correlations");
         container.innerHTML = "";
-        if (!events || events.length === 0) {
-          container.innerHTML = '<p class="muted">No detector activity captured yet.</p>';
+        const recents = (correlations && correlations.recent_correlations) || correlations?.recent || [];
+        const summaryList = recents.slice(0, 6);
+        if (summaryList.length === 0) {
+          container.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
+        } else {
+          summaryList.forEach((event) => {
+            const card = document.createElement("div");
+            card.className = "alert low";
+            card.innerHTML = `
+              <div class="alert-title">${event.sku || "SKU"} • ${event.station_id || "--"}</div>
+              <div class="muted">Confidence ${(event.confidence ?? 0).toFixed(2)} — RFID ${event.rfid_matches ?? 0} / Vision ${event.vision_matches ?? 0}</div>
+              <div class="muted">${new Date(event.timestamp || Date.now()).toLocaleTimeString()}</div>
+            `;
+            container.appendChild(card);
+          });
+        }
+
+        // leaderboards and recent correlations details
+        renderLeaderboard(document.getElementById("correlated-skus"), correlations?.top_correlated_skus || [], (entry) => ({
+          label: Array.isArray(entry) ? entry[0] : entry.sku || "SKU",
+          value: Array.isArray(entry) ? entry[1] : entry.count || entry.score || "--",
+        }));
+
+        renderLeaderboard(document.getElementById("stations-under-watch"), correlations?.stations_under_watch || [], (entry) => ({
+          label: Array.isArray(entry) ? entry[0] : entry.station_id || "station",
+          value: Array.isArray(entry) ? entry[1] : entry.count || "--",
+        }));
+
+        const recentContainer = document.getElementById("recent-correlations");
+        recentContainer.innerHTML = "";
+        const recentsList = correlations?.recent_correlations || correlations?.recent || [];
+        if (!recentsList.length) {
+          recentContainer.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
           return;
         }
+        recentsList.slice(-5).reverse().forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "list-card";
+          card.innerHTML = `
+            <strong>${item.sku || "SKU"} @ ${item.station_id || "--"}</strong>
+            <span class="muted">Confidence ${(item.confidence ?? 0).toFixed(2)} · RFID ${item.rfid_matches ?? 0} · Vision ${item.vision_matches ?? 0}</span>
+            <span class="muted">${new Date(item.timestamp || Date.now()).toLocaleTimeString()}</span>
+          `;
+          recentContainer.appendChild(card);
+        });
+      }
+
+      function renderDetections(events) {
+        const container = document.getElementById("detections");
+        container.innerHTML = "";
+        if (!events || events.length === 0) {
+          container.innerHTML = '<p class="muted">No detections received.</p>';
+          return;
+        }
+
         const recent = events.slice(-6).reverse();
         recent.forEach((event) => {
           const card = document.createElement("div");
@@ -536,11 +633,30 @@
               <strong>${type}</strong>
               ${hasConfidence ? `<span class="badge">${confidenceValue.toFixed(2)}</span>` : ""}
             </div>
-            <span class="muted">${event.station_id || "--"} • ${new Date(event.timestamp).toLocaleTimeString()}</span>
+            <span class="muted">${event.station_id || "--"} • ${new Date(event.timestamp || Date.now()).toLocaleTimeString()}</span>
             ${notes ? `<span>${notes}</span>` : ""}
             ${evidenceSummary ? `<span class="muted">${evidenceSummary}</span>` : ""}
           `;
           container.appendChild(card);
+        });
+      }
+
+      function renderSuspicious(events) {
+        const container = document.getElementById("suspicious");
+        container.innerHTML = "";
+        if (!events || events.length === 0) {
+          container.innerHTML = '<p class="muted">All checkouts look healthy.</p>';
+          return;
+        }
+        events.forEach((event) => {
+          const alert = document.createElement("div");
+          alert.className = "alert high";
+          alert.innerHTML = `
+            <div class="alert-title">SKU ${event.sku || "??"} @ ${event.station_id}</div>
+            <div class="muted">${(event.reasons || []).join(", ")}</div>
+            <div class="muted">Confidence: ${(event.confidence ?? 0).toFixed(2)}</div>
+          `;
+          container.appendChild(alert);
         });
       }
 
@@ -666,40 +782,6 @@
         });
       }
 
-      function renderCorrelations(correlations) {
-        const topSkus = correlations?.top_correlated_skus || [];
-        const stationsWatch = correlations?.stations_under_watch || [];
-        renderLeaderboard(document.getElementById("correlated-skus"), topSkus, (entry) => ({
-          label: entry[0],
-          value: entry[1],
-        }));
-        renderLeaderboard(document.getElementById("stations-under-watch"), stationsWatch, (entry) => ({
-          label: entry[0],
-          value: entry[1],
-        }));
-
-        const recentContainer = document.getElementById("recent-correlations");
-        recentContainer.innerHTML = "";
-        const recents = correlations?.recent_correlations || [];
-        if (recents.length === 0) {
-          recentContainer.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
-          return;
-        }
-
-        recents.slice(-5).reverse().forEach((item) => {
-          const card = document.createElement("div");
-          card.className = "list-card";
-          card.innerHTML = `
-            <strong>${item.sku || "SKU"} @ ${item.station_id || "--"}</strong>
-            <span class="muted">Confidence ${(item.confidence ?? 0).toFixed(2)} · RFID ${item.rfid_matches ?? 0} · Vision ${
-            item.vision_matches ?? 0
-          }</span>
-            <span class="muted">${new Date(item.timestamp).toLocaleTimeString()}</span>
-          `;
-          recentContainer.appendChild(card);
-        });
-      }
-
       function renderStreamHealth(health) {
         const eventsLastMinute = health && typeof health.events_last_minute === "number" ? health.events_last_minute : null;
         const eventsPerMinute = health && typeof health.events_per_minute === "number" ? health.events_per_minute : null;
@@ -733,14 +815,19 @@
           if (!response.ok) throw new Error("Dashboard unavailable");
           const data = await response.json();
           const queue = data.queue || {};
-          document.getElementById("last-updated").textContent = new Date(data.timestamp).toLocaleTimeString();
+          document.getElementById("last-updated").textContent = new Date(data.timestamp || Date.now()).toLocaleTimeString();
           document.getElementById("overall-health").textContent = `${queue.overall_health_score ?? "--"}`;
+          document.getElementById("system-status-text").textContent = data.system_status ?? "--";
+          document.getElementById("total-customers").textContent = queue.staffing?.total_customers ?? "--";
+          document.getElementById("active-stations").textContent = queue.staffing?.active_stations ?? "--";
           document.getElementById("staffing-recommendation").textContent = queue.staffing?.recommendation || "--";
-          document.getElementById("system-status").textContent = "Live";
-          renderStations(queue.stations);
+          document.getElementById("target-per-station").textContent = queue.staffing?.target_per_station ?? "--";
+
+          renderStations(queue.stations || []);
+          renderStaffing(queue.staffing || null);
+          renderCorrelations(data.correlations || {});
           renderInventory(data.inventory || null);
           renderInsights(data.enriched_insights || []);
-          renderCorrelations(data.correlations || {});
           renderStreamHealth(data.stream_health || {});
         } catch (error) {
           console.error(error);
@@ -753,9 +840,9 @@
           const response = await fetch(`${API_BASE}/api/alerts`);
           if (!response.ok) throw new Error("Alert feed unavailable");
           const data = await response.json();
-          renderAlerts(data.queue_incidents);
-          renderSuspicious(data.suspicious_checkouts);
-          renderDetectionEvents(data.detection_events);
+          renderAlerts(data.queue_incidents || []);
+          renderDetections(data.detection_events || []);
+          renderSuspicious(data.suspicious_checkouts || []);
         } catch (error) {
           console.error(error);
         }

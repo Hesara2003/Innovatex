@@ -13,6 +13,7 @@ Focus: deliver the full detection suite, shared analytics, and competition-ready
   - Inventory count discrepancies
 - Provide detector registry and reset hooks covering all modules in `src/detection/`.
 - Build analytics for queue KPIs and operational recommendations (`src/analytics/queue_metrics.py`, `src/analytics/operations.py`).
+- Merge Sandali's real-time queue monitoring service with batch KPIs, exposing `QueueMetricsService` for dashboards.
 - Integrate demo runner to stream data, execute detectors/analytics, and persist outputs under `submission-structure/Team##_sentinel/evidence`.
 - Backfill unit tests across detectors and analytics; smoke-test demo pipeline.
 
@@ -26,6 +27,7 @@ Focus: deliver the full detection suite, shared analytics, and competition-ready
 - `src/detection/__init__.py` (registry & reset wiring)
 - `src/analytics/queue_metrics.py`
 - `src/analytics/operations.py`
+- `tests/test_integration_runner.py`
 - `submission-structure/Team##_sentinel/evidence/executables/run_demo.py`
 - `submission-structure/Team##_sentinel/evidence/output/*` example artifacts (`events.jsonl`, `insights.json`)
 - `tests/test_detection_*.py`, `tests/test_analytics_*.py`
@@ -34,3 +36,4 @@ Focus: deliver the full detection suite, shared analytics, and competition-ready
 - M1: Sentinel event schema finalized; base detectors emit validated events.
 - M2: Extended detectors (system, queue, inventory) and analytics produce actionable signals on sample streams.
 - M3: Demo runner writes consolidated detections & insights; confidence calibration, deduping window, and automated tests locked in.
+- M4: Integration runner ensures simulator + pipeline parity (full pytest suite green).
