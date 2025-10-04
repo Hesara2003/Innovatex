@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Sentinel – CX Command Center</title>
+    <style>
+      :root {
+        color-scheme: dark light;
+        --bg: #0f172a;
+        --panel: rgba(30, 41, 59, 0.9);
+        --card: rgba(15, 23, 42, 0.85);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+        --border: rgba(255, 255, 255, 0.1);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: linear-gradient(135deg, var(--bg), #1e293b 55%, #111827);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        padding: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), transparent);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(12px);
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(1.6rem, 2.4vw, 2.8rem);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status-chip {
+        background: rgba(34, 197, 94, 0.2);
+        border: 1px solid rgba(34, 197, 94, 0.6);
+        color: #bbf7d0;
+        padding: 0.4rem 0.9rem;
+        border-radius: 100px;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      main {
+        flex: 1;
+        padding: 2rem;
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        box-shadow: 0 20px 35px rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(8px);
+      }
+
+      section h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .cards {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .station-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1rem 1.2rem;
+        display: grid;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
+        min-height: 140px;
+      }
+
+      .station-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0.14;
+        background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.6), transparent 55%);
+      }
+
+      .station-card .station-id {
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+
+      .station-card .metric {
+        font-size: 0.95rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .health-indicator {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 12px currentColor;
+      }
+
+      .health-optimal {
+        color: #34d399;
+      }
+
+      .health-stable {
+        color: #38bdf8;
+      }
+
+      .health-at-risk {
+        color: #facc15;
+      }
+
+      .health-critical {
+        color: #f87171;
+      }
+
+      .alert {
+        border-radius: 14px;
+        padding: 0.8rem 1rem;
+        margin-bottom: 0.8rem;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.6);
+      }
+
+      .alert.high {
+        border-color: rgba(248, 113, 113, 0.5);
+        background: rgba(248, 113, 113, 0.15);
+      }
+
+      .alert.medium {
+        border-color: rgba(250, 204, 21, 0.4);
+        background: rgba(250, 204, 21, 0.12);
+      }
+
+      .alert.low {
+        border-color: rgba(59, 130, 246, 0.35);
+        background: rgba(59, 130, 246, 0.08);
+      }
+
+      .alert-title {
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .grid-two {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.8rem;
+      }
+
+      .stat-box {
+        background: rgba(15, 23, 42, 0.7);
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        padding: 0.9rem 1rem;
+      }
+
+      footer {
+        padding: 1.1rem 2rem;
+        text-align: right;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.7);
+      }
+
+      @media (max-width: 768px) {
+        header {
+          flex-direction: column;
+          gap: 1rem;
+          text-align: center;
+        }
+
+        main {
+          padding: 1.4rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Project Sentinel</h1>
+        <p class="muted">Customer Experience Operations Command Center</p>
+      </div>
+      <div class="status-chip">
+        <span class="health-indicator health-optimal"></span>
+        <span id="system-status">Live</span>
+      </div>
+    </header>
+
+    <main>
+      <section id="overall-section">
+        <h2>
+          Store Pulse
+          <span class="muted" id="last-updated">--</span>
+        </h2>
+        <div class="grid-two" id="overall-metrics">
+          <div class="stat-box">
+            <div class="muted">Overall Health</div>
+            <div id="overall-health" style="font-size: 2.1rem; font-weight: 700">--</div>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Staffing Recommendation</div>
+            <div id="staffing-recommendation" style="font-size: 1rem">--</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Queue Stations</h2>
+        <div class="cards" id="stations"></div>
+      </section>
+
+      <section>
+        <h2>Critical Alerts</h2>
+        <div id="alerts"></div>
+      </section>
+
+      <section>
+        <h2>Suspicious Checkouts</h2>
+        <div id="suspicious"></div>
+      </section>
+    </main>
+
+    <footer>
+      Sentinel CX Analytics · Powered by Python standard library & vanilla JS
+    </footer>
+
+    <script>
+      const apiHost = window.location.hostname || "localhost";
+      const API_BASE = `http://${apiHost}:5000`;
+      console.info(`[sentinel] dashboard targeting API at ${API_BASE}`);
+
+      function classifyHealth(score) {
+        if (score >= 85) return "health-optimal";
+        if (score >= 70) return "health-stable";
+        if (score >= 50) return "health-at-risk";
+        return "health-critical";
+      }
+
+      function renderStations(stations) {
+        const container = document.getElementById("stations");
+        container.innerHTML = "";
+        if (!stations || stations.length === 0) {
+          container.innerHTML = '<p class="muted">No active stations yet.</p>';
+          return;
+        }
+        stations.forEach((station) => {
+          const indicator = classifyHealth(station.health_score || 0);
+          const card = document.createElement("div");
+          card.className = "station-card";
+          card.innerHTML = `
+            <div style="display:flex; justify-content: space-between; align-items:center;">
+              <div class="station-id">${station.station_id}</div>
+              <span class="health-indicator ${indicator}"></span>
+            </div>
+            <div class="metric"><span>Health score</span><strong>${station.health_score ?? "--"}</strong></div>
+            <div class="metric"><span>Queue length</span><span>${station.customer_count ?? "--"} customers</span></div>
+            <div class="metric"><span>Dwell time</span><span>${station.average_dwell_time ?? "--"}s</span></div>
+            <div class="metric"><span>Service rate</span><span>${station.service_rate ?? "--"}/min</span></div>
+            <div class="metric"><span>Status</span><span style="text-transform: capitalize;">${station.status ?? "--"}</span></div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      function renderAlerts(incidents) {
+        const container = document.getElementById("alerts");
+        container.innerHTML = "";
+        if (!incidents || incidents.length === 0) {
+          container.innerHTML = '<p class="muted">No active incidents.</p>';
+          return;
+        }
+        incidents.forEach((incident) => {
+          const alert = document.createElement("div");
+          alert.className = `alert ${incident.priority || ""}`;
+          alert.innerHTML = `
+            <div class="alert-title">${incident.message || incident.type}</div>
+            <div class="muted">${incident.station_id || "--"} • ${new Date(incident.timestamp).toLocaleTimeString()}</div>
+          `;
+          container.appendChild(alert);
+        });
+      }
+
+      function renderSuspicious(events) {
+        const container = document.getElementById("suspicious");
+        container.innerHTML = "";
+        if (!events || events.length === 0) {
+          container.innerHTML = '<p class="muted">All checkouts look healthy.</p>';
+          return;
+        }
+        events.forEach((event) => {
+          const alert = document.createElement("div");
+          alert.className = "alert high";
+          alert.innerHTML = `
+            <div class="alert-title">SKU ${event.sku || "??"} @ ${event.station_id}</div>
+            <div class="muted">${(event.reasons || []).join(", ")}</div>
+            <div class="muted">Confidence: ${(event.confidence ?? 0).toFixed(2)}</div>
+          `;
+          container.appendChild(alert);
+        });
+      }
+
+      async function refreshDashboard() {
+        try {
+          const response = await fetch(`${API_BASE}/api/dashboard`);
+          if (!response.ok) throw new Error("Dashboard unavailable");
+          const data = await response.json();
+          const queue = data.queue || {};
+          document.getElementById("last-updated").textContent = new Date(data.timestamp).toLocaleTimeString();
+          document.getElementById("overall-health").textContent = `${queue.overall_health_score ?? "--"}`;
+          document.getElementById("staffing-recommendation").textContent = queue.staffing?.recommendation || "--";
+          renderStations(queue.stations);
+        } catch (error) {
+          console.error(error);
+          document.getElementById("system-status").textContent = "Offline";
+        }
+      }
+
+      async function refreshAlerts() {
+        try {
+          const response = await fetch(`${API_BASE}/api/alerts`);
+          if (!response.ok) throw new Error("Alert feed unavailable");
+          const data = await response.json();
+          renderAlerts(data.queue_incidents);
+          renderSuspicious(data.suspicious_checkouts);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      refreshDashboard();
+      refreshAlerts();
+      setInterval(refreshDashboard, 3000);
+      setInterval(refreshAlerts, 3000);
+    </script>
+  </body>
+</html>
