@@ -11,7 +11,7 @@ import math
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from statistics import mean
 from typing import Deque, Dict, Iterable, List, Optional, Tuple
 
@@ -34,7 +34,7 @@ def _parse_timestamp(value: Optional[str]) -> datetime:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
         except ValueError:
             pass
-    return datetime.utcnow()
+    return datetime.now(UTC)
 
 
 def _coerce_float(value) -> Optional[float]:
@@ -158,7 +158,7 @@ class QueueMetricsService:
                 "service_rate": 0.0,
                 "trend": 0.0,
                 "volatility": 0.0,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         latest = history[-1]
@@ -361,7 +361,7 @@ class QueueMetricsService:
         )
 
         return {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "overall_health_score": round(overall_score, 1),
             "stations": station_cards,
             "staffing": self.calculate_staff_allocation(),
@@ -437,7 +437,7 @@ class QueueMetricsService:
             "type": incident_type,
             "message": message,
             "priority": priority,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "metadata": metadata or {},
         }
 
@@ -475,7 +475,7 @@ def compute_kpis(events: Iterable[SentinelEvent]) -> dict:
         if queue_length is None and dwell is None:
             continue
         station_key = getattr(event, "station_id", None) or "unknown"
-        timestamp = getattr(event, "timestamp", None) or datetime.utcnow()
+        timestamp = getattr(event, "timestamp", None) or datetime.now(UTC)
         per_station[station_key].append((timestamp, queue_length, dwell))
 
     if not per_station:
