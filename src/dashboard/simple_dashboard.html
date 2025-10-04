@@ -62,6 +62,7 @@
         display: grid;
         gap: 1.5rem;
         grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        align-content: start;
       }
 
       section {
@@ -181,6 +182,12 @@
         gap: 0.8rem;
       }
 
+      .grid-three {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
       .stat-box {
         background: rgba(15, 23, 42, 0.7);
         border-radius: 14px;
@@ -227,14 +234,21 @@
           Store Pulse
           <span class="muted" id="last-updated">--</span>
         </h2>
-        <div class="grid-two" id="overall-metrics">
+        <div class="grid-three" id="overall-metrics">
           <div class="stat-box">
             <div class="muted">Overall Health</div>
             <div id="overall-health" style="font-size: 2.1rem; font-weight: 700">--</div>
+            <div class="muted" id="system-status-text">--</div>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Total Customers</div>
+            <div id="total-customers" style="font-size: 1.4rem; font-weight: 600">--</div>
+            <div class="muted">Active stations: <span id="active-stations">--</span></div>
           </div>
           <div class="stat-box">
             <div class="muted">Staffing Recommendation</div>
             <div id="staffing-recommendation" style="font-size: 1rem">--</div>
+            <div class="muted">Target per station: <span id="target-per-station">--</span></div>
           </div>
         </div>
       </section>
@@ -245,6 +259,11 @@
       </section>
 
       <section>
+        <h2>Staffing Insights</h2>
+        <div id="staffing-kpis" class="grid-two"></div>
+      </section>
+
+      <section>
         <h2>Critical Alerts</h2>
         <div id="alerts"></div>
       </section>
@@ -252,6 +271,16 @@
       <section>
         <h2>Suspicious Checkouts</h2>
         <div id="suspicious"></div>
+      </section>
+
+      <section>
+        <h2>Correlated Checkouts</h2>
+        <div id="correlations"></div>
+      </section>
+
+      <section>
+        <h2>Detection Events</h2>
+        <div id="detections"></div>
       </section>
     </main>
 
@@ -315,6 +344,86 @@
         });
       }
 
+      function renderStaffing(staffing) {
+        const container = document.getElementById("staffing-kpis");
+        container.innerHTML = "";
+        if (!staffing) {
+          container.innerHTML = '<p class="muted">Staffing data will appear once queues are active.</p>';
+          return;
+        }
+
+        const stats = [
+          {
+            label: "Active stations",
+            value: staffing.active_stations ?? "--",
+            note: "Currently serving customers",
+          },
+          {
+            label: "Required stations",
+            value: staffing.required_stations ?? "--",
+            note: "Needed to meet demand",
+          },
+          {
+            label: "Efficiency ratio",
+            value: staffing.efficiency_ratio?.toFixed(2) ?? "--",
+            note: "Customers vs. target",
+          },
+        ];
+
+        stats.forEach((item) => {
+          const box = document.createElement("div");
+          box.className = "stat-box";
+          box.innerHTML = `
+            <div class="muted">${item.label}</div>
+            <div style="font-size: 1.5rem; font-weight: 600">${item.value}</div>
+            <div class="muted">${item.note}</div>
+          `;
+          container.appendChild(box);
+        });
+      }
+
+      function renderCorrelations(summary) {
+        const container = document.getElementById("correlations");
+        container.innerHTML = "";
+        const correlations = summary?.recent_correlations || [];
+        if (correlations.length === 0) {
+          container.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
+          return;
+        }
+
+        correlations.slice(0, 6).forEach((event) => {
+          const card = document.createElement("div");
+          card.className = "alert low";
+          card.innerHTML = `
+            <div class="alert-title">${event.sku} • ${event.station_id}</div>
+            <div class="muted">Confidence ${(event.confidence ?? 0).toFixed(2)} — RFID ${event.rfid_matches} / Vision ${event.vision_matches}</div>
+            <div class="muted">${new Date(event.timestamp).toLocaleTimeString()}</div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      function renderDetections(events) {
+        const container = document.getElementById("detections");
+        container.innerHTML = "";
+        if (!events || events.length === 0) {
+          container.innerHTML = '<p class="muted">No detections received.</p>';
+          return;
+        }
+
+        events.forEach((event) => {
+          const alert = document.createElement("div");
+          alert.className = "alert medium";
+          alert.innerHTML = `
+            <div class="alert-title">${event.details?.type ?? "Detection"} @ ${event.station_id}</div>
+            <div class="muted">Confidence ${(event.details?.confidence ?? 0).toFixed(2)}</div>
+            <div class="muted">${new Date(event.timestamp).toLocaleTimeString()}</div>
+            <div class="muted">${event.details?.notes ?? ""}</div>
+          `;
+          container.appendChild(alert);
+        });
+      }
+
       function renderSuspicious(events) {
         const container = document.getElementById("suspicious");
         container.innerHTML = "";
@@ -342,8 +451,14 @@
           const queue = data.queue || {};
           document.getElementById("last-updated").textContent = new Date(data.timestamp).toLocaleTimeString();
           document.getElementById("overall-health").textContent = `${queue.overall_health_score ?? "--"}`;
+          document.getElementById("system-status-text").textContent = data.system_status ?? "--";
+          document.getElementById("total-customers").textContent = queue.staffing?.total_customers ?? "--";
+          document.getElementById("active-stations").textContent = queue.staffing?.active_stations ?? "--";
           document.getElementById("staffing-recommendation").textContent = queue.staffing?.recommendation || "--";
+          document.getElementById("target-per-station").textContent = queue.staffing?.target_per_station ?? "--";
           renderStations(queue.stations);
+          renderStaffing(queue.staffing);
+          renderCorrelations(data.correlations);
         } catch (error) {
           console.error(error);
           document.getElementById("system-status").textContent = "Offline";
@@ -356,6 +471,7 @@
           if (!response.ok) throw new Error("Alert feed unavailable");
           const data = await response.json();
           renderAlerts(data.queue_incidents);
+          renderDetections(data.detection_events);
           renderSuspicious(data.suspicious_checkouts);
         } catch (error) {
           console.error(error);
