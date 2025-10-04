@@ -195,6 +195,95 @@
         padding: 0.9rem 1rem;
       }
 
+      section h3 {
+        margin-top: 1.2rem;
+        margin-bottom: 0.6rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .list-group {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .list-card {
+        background: rgba(15, 23, 42, 0.7);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 0.9rem 1rem;
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .list-card strong {
+        font-size: 1rem;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .badge {
+        background: rgba(59, 130, 246, 0.18);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        border-radius: 999px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+      }
+
+      .badge.critical {
+        background: rgba(248, 113, 113, 0.18);
+        border-color: rgba(248, 113, 113, 0.5);
+      }
+
+      .insight-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .insight-list li {
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        line-height: 1.4;
+      }
+
+      .leaderboard {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.6rem;
+      }
+
+      .leaderboard li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+        padding-bottom: 0.3rem;
+      }
+
+      .metric-large {
+        font-size: 1.8rem;
+        font-weight: 700;
+      }
+
+      .subtext {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
       footer {
         padding: 1.1rem 2rem;
         text-align: right;
@@ -237,14 +326,16 @@
         <div class="grid-three" id="overall-metrics">
           <div class="stat-box">
             <div class="muted">Overall Health</div>
-            <div id="overall-health" style="font-size: 2.1rem; font-weight: 700">--</div>
+            <div id="overall-health" class="metric-large">--</div>
             <div class="muted" id="system-status-text">--</div>
           </div>
+
           <div class="stat-box">
             <div class="muted">Total Customers</div>
             <div id="total-customers" style="font-size: 1.4rem; font-weight: 600">--</div>
             <div class="muted">Active stations: <span id="active-stations">--</span></div>
           </div>
+
           <div class="stat-box">
             <div class="muted">Staffing Recommendation</div>
             <div id="staffing-recommendation" style="font-size: 1rem">--</div>
@@ -279,8 +370,69 @@
       </section>
 
       <section>
-        <h2>Detection Events</h2>
-        <div id="detections"></div>
+        <h2>Detection Feed</h2>
+        <div id="detections" class="list-group"></div>
+      </section>
+
+      <section id="inventory-section">
+        <h2>Inventory Watch</h2>
+        <div class="grid-two">
+          <div class="stat-box">
+            <div class="muted">Shrinkage Value</div>
+            <div id="inventory-shrinkage-value" class="metric-large">--</div>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Shrinkage Units</div>
+            <div id="inventory-shrinkage-units" class="metric-large">--</div>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Actual Inventory Value</div>
+            <div id="inventory-actual-value" class="metric-large">--</div>
+            <div class="subtext" id="inventory-expected-value">Expected --</div>
+          </div>
+        </div>
+        <h3>Shrinkage Alerts</h3>
+        <div id="inventory-alerts" class="list-group"></div>
+        <h3>High-Value Watchlist</h3>
+        <div id="inventory-high-value" class="list-group"></div>
+      </section>
+
+      <section>
+        <h2>Operational Insights</h2>
+        <ul id="insights" class="insight-list"></ul>
+      </section>
+
+      <section>
+        <h2>Correlation Radar</h2>
+        <div class="grid-two">
+          <div class="stat-box">
+            <div class="muted">Top Correlated SKUs</div>
+            <ul id="correlated-skus" class="leaderboard"></ul>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Stations Under Watch</div>
+            <ul id="stations-under-watch" class="leaderboard"></ul>
+          </div>
+        </div>
+        <h3>Recent Correlations</h3>
+        <div id="recent-correlations" class="list-group"></div>
+      </section>
+
+      <section>
+        <h2>Data Feed Health</h2>
+        <div class="grid-two">
+          <div class="stat-box">
+            <div class="muted">Events last minute</div>
+            <div id="stream-events-minute" class="metric-large">--</div>
+          </div>
+          <div class="stat-box">
+            <div class="muted">Events per minute</div>
+            <div id="stream-events-rate" class="metric-large">--</div>
+            <div class="subtext" id="stream-last-event">Last event --</div>
+          </div>
+        </div>
+        <h3>Active Datasets</h3>
+        <div id="stream-datasets" class="badge-row"></div>
       </section>
     </main>
 
@@ -292,6 +444,22 @@
       const apiHost = window.location.hostname || "localhost";
       const API_BASE = `http://${apiHost}:5000`;
       console.info(`[sentinel] dashboard targeting API at ${API_BASE}`);
+      const currencyFormatter = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      });
+      const numberFormatter = new Intl.NumberFormat("en-US", {
+        maximumFractionDigits: 1,
+      });
+
+      function toTitleCase(value) {
+        if (!value) return "";
+        return value
+          .toString()
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      }
 
       function classifyHealth(score) {
         if (score >= 85) return "health-optimal";
@@ -382,24 +550,54 @@
         });
       }
 
-      function renderCorrelations(summary) {
+      function renderCorrelations(correlations) {
+        // correlations may include recent_correlations, top_correlated_skus, stations_under_watch
         const container = document.getElementById("correlations");
         container.innerHTML = "";
-        const correlations = summary?.recent_correlations || [];
-        if (correlations.length === 0) {
+        const recents = (correlations && correlations.recent_correlations) || correlations?.recent || [];
+        const summaryList = recents.slice(0, 6);
+        if (summaryList.length === 0) {
           container.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
-          return;
+        } else {
+          summaryList.forEach((event) => {
+            const card = document.createElement("div");
+            card.className = "alert low";
+            card.innerHTML = `
+              <div class="alert-title">${event.sku || "SKU"} • ${event.station_id || "--"}</div>
+              <div class="muted">Confidence ${(event.confidence ?? 0).toFixed(2)} — RFID ${event.rfid_matches ?? 0} / Vision ${event.vision_matches ?? 0}</div>
+              <div class="muted">${new Date(event.timestamp || Date.now()).toLocaleTimeString()}</div>
+            `;
+            container.appendChild(card);
+          });
         }
 
-        correlations.slice(0, 6).forEach((event) => {
+        // leaderboards and recent correlations details
+        renderLeaderboard(document.getElementById("correlated-skus"), correlations?.top_correlated_skus || [], (entry) => ({
+          label: Array.isArray(entry) ? entry[0] : entry.sku || "SKU",
+          value: Array.isArray(entry) ? entry[1] : entry.count || entry.score || "--",
+        }));
+
+        renderLeaderboard(document.getElementById("stations-under-watch"), correlations?.stations_under_watch || [], (entry) => ({
+          label: Array.isArray(entry) ? entry[0] : entry.station_id || "station",
+          value: Array.isArray(entry) ? entry[1] : entry.count || "--",
+        }));
+
+        const recentContainer = document.getElementById("recent-correlations");
+        recentContainer.innerHTML = "";
+        const recentsList = correlations?.recent_correlations || correlations?.recent || [];
+        if (!recentsList.length) {
+          recentContainer.innerHTML = '<p class="muted">No recent correlated checkouts.</p>';
+          return;
+        }
+        recentsList.slice(-5).reverse().forEach((item) => {
           const card = document.createElement("div");
-          card.className = "alert low";
+          card.className = "list-card";
           card.innerHTML = `
-            <div class="alert-title">${event.sku} • ${event.station_id}</div>
-            <div class="muted">Confidence ${(event.confidence ?? 0).toFixed(2)} — RFID ${event.rfid_matches} / Vision ${event.vision_matches}</div>
-            <div class="muted">${new Date(event.timestamp).toLocaleTimeString()}</div>
+            <strong>${item.sku || "SKU"} @ ${item.station_id || "--"}</strong>
+            <span class="muted">Confidence ${(item.confidence ?? 0).toFixed(2)} · RFID ${item.rfid_matches ?? 0} · Vision ${item.vision_matches ?? 0}</span>
+            <span class="muted">${new Date(item.timestamp || Date.now()).toLocaleTimeString()}</span>
           `;
-          container.appendChild(card);
+          recentContainer.appendChild(card);
         });
       }
 
@@ -411,16 +609,35 @@
           return;
         }
 
-        events.forEach((event) => {
-          const alert = document.createElement("div");
-          alert.className = "alert medium";
-          alert.innerHTML = `
-            <div class="alert-title">${event.details?.type ?? "Detection"} @ ${event.station_id}</div>
-            <div class="muted">Confidence ${(event.details?.confidence ?? 0).toFixed(2)}</div>
-            <div class="muted">${new Date(event.timestamp).toLocaleTimeString()}</div>
-            <div class="muted">${event.details?.notes ?? ""}</div>
+        const recent = events.slice(-6).reverse();
+        recent.forEach((event) => {
+          const card = document.createElement("div");
+          card.className = "list-card";
+          const details = event.details || {};
+          const type = toTitleCase(details.type || details.event_type || "Detection");
+          const confidenceRaw = details.confidence;
+          const confidenceValue =
+            typeof confidenceRaw === "number" ? confidenceRaw : Number.parseFloat(confidenceRaw);
+          const hasConfidence = Number.isFinite(confidenceValue);
+          const evidence = details.evidence || details.attributes;
+          let evidenceSummary = "";
+          if (evidence && typeof evidence === "object") {
+            evidenceSummary = Object.entries(evidence)
+              .slice(0, 3)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join(", ");
+          }
+          const notes = details.notes || details.message || "";
+          card.innerHTML = `
+            <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.6rem;">
+              <strong>${type}</strong>
+              ${hasConfidence ? `<span class="badge">${confidenceValue.toFixed(2)}</span>` : ""}
+            </div>
+            <span class="muted">${event.station_id || "--"} • ${new Date(event.timestamp || Date.now()).toLocaleTimeString()}</span>
+            ${notes ? `<span>${notes}</span>` : ""}
+            ${evidenceSummary ? `<span class="muted">${evidenceSummary}</span>` : ""}
           `;
-          container.appendChild(alert);
+          container.appendChild(card);
         });
       }
 
@@ -443,22 +660,175 @@
         });
       }
 
+      function renderInventory(report) {
+        const shrinkValue = report?.summary?.total_shrinkage_value;
+        const shrinkUnits = report?.summary?.total_shrinkage_units || report?.summary?.shrinkage_units;
+        const actualValue = report?.summary?.overall_actual_value;
+        const expectedValue = report?.summary?.overall_expected_value;
+
+        document.getElementById("inventory-shrinkage-value").textContent =
+          typeof shrinkValue === "number" ? currencyFormatter.format(shrinkValue) : "--";
+        document.getElementById("inventory-shrinkage-units").textContent =
+          typeof shrinkUnits === "number" ? numberFormatter.format(shrinkUnits) : "--";
+        document.getElementById("inventory-actual-value").textContent =
+          typeof actualValue === "number" ? currencyFormatter.format(actualValue) : "--";
+        document.getElementById("inventory-expected-value").textContent =
+          typeof expectedValue === "number"
+            ? `Expected ${currencyFormatter.format(expectedValue)}`
+            : "Expected --";
+
+        const alertsContainer = document.getElementById("inventory-alerts");
+        const watchContainer = document.getElementById("inventory-high-value");
+        alertsContainer.innerHTML = "";
+        watchContainer.innerHTML = "";
+
+        if (!report) {
+          alertsContainer.innerHTML = '<p class="muted">Awaiting inventory snapshot.</p>';
+          watchContainer.innerHTML = '<p class="muted">Awaiting inventory snapshot.</p>';
+          return;
+        }
+
+        const shrinkageAlerts = report.alerts?.shrinkage || [];
+        if (shrinkageAlerts.length === 0) {
+          alertsContainer.innerHTML = '<p class="muted">No shrinkage alerts at the moment.</p>';
+        } else {
+          shrinkageAlerts.slice(0, 5).forEach((alert) => {
+            const card = document.createElement("div");
+            card.className = "list-card";
+            const priorityBadge = `<span class="badge ${alert.priority === "high" ? "critical" : ""}">${
+              toTitleCase(alert.priority || "medium")
+            }</span>`;
+            card.innerHTML = `
+              <div style="display:flex; justify-content: space-between; align-items:center; gap: 0.5rem;">
+                <strong>${alert.product_name || alert.sku}</strong>
+                ${priorityBadge}
+              </div>
+              <span class="muted">SKU ${alert.sku}</span>
+              <span class="muted">Shrinkage ${alert.shrinkage_units || alert.delta_units} units · ${currencyFormatter.format(
+                alert.shrinkage_value || alert.delta_value || 0
+              )}</span>
+            `;
+            alertsContainer.appendChild(card);
+          });
+        }
+
+        const highValue = report.alerts?.high_value_watch || [];
+        if (highValue.length === 0) {
+          watchContainer.innerHTML = '<p class="muted">All high-value items are sufficiently stocked.</p>';
+        } else {
+          highValue.slice(0, 5).forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "list-card";
+            card.innerHTML = `
+              <strong>${item.product_name || item.sku}</strong>
+              <span class="muted">SKU ${item.sku} · On hand ${item.units_on_hand}</span>
+              <span class="muted">Unit price ${currencyFormatter.format(item.unit_price || 0)}</span>
+              <span class="muted">${item.message || "Monitor closely"}</span>
+            `;
+            watchContainer.appendChild(card);
+          });
+        }
+      }
+
+      function renderInsights(insights) {
+        const container = document.getElementById("insights");
+        container.innerHTML = "";
+        if (!insights || insights.length === 0) {
+          const empty = document.createElement("li");
+          empty.className = "muted";
+          empty.textContent = "No additional insights yet.";
+          container.appendChild(empty);
+          return;
+        }
+
+        insights
+          .slice(-5)
+          .reverse()
+          .forEach((insight) => {
+            const li = document.createElement("li");
+            if (typeof insight === "string") {
+              li.textContent = insight;
+            } else {
+              const primary =
+                insight.insight || insight.message || insight.summary || JSON.stringify(insight, null, 0);
+              const analyst = insight.analyst || insight.owner || "";
+              const focus = insight.focus || insight.category || "";
+              const timestamp = insight.timestamp ? new Date(insight.timestamp).toLocaleTimeString() : "";
+              li.innerHTML = `
+                <strong>${primary}</strong>
+                <div class="subtext">${[analyst, focus].filter(Boolean).join(" · ")}</div>
+                ${timestamp ? `<div class="subtext">${timestamp}</div>` : ""}
+              `;
+            }
+            container.appendChild(li);
+          });
+      }
+
+      function renderLeaderboard(listElement, entries, formatter) {
+        if (!listElement) return;
+        listElement.innerHTML = "";
+        if (!entries || entries.length === 0) {
+          const item = document.createElement("li");
+          item.className = "muted";
+          item.textContent = "No data";
+          listElement.appendChild(item);
+          return;
+        }
+        entries.forEach((entry) => {
+          const li = document.createElement("li");
+          const { label, value } = formatter(entry);
+          li.innerHTML = `<span>${label}</span><span>${value}</span>`;
+          listElement.appendChild(li);
+        });
+      }
+
+      function renderStreamHealth(health) {
+        const eventsLastMinute = health && typeof health.events_last_minute === "number" ? health.events_last_minute : null;
+        const eventsPerMinute = health && typeof health.events_per_minute === "number" ? health.events_per_minute : null;
+        const lastEventAgo = health && typeof health.last_event_seconds_ago === "number" ? health.last_event_seconds_ago : null;
+        const datasets = Array.isArray(health?.active_datasets) ? health.active_datasets : [];
+
+        document.getElementById("stream-events-minute").textContent =
+          eventsLastMinute !== null ? eventsLastMinute.toString() : "--";
+        document.getElementById("stream-events-rate").textContent =
+          eventsPerMinute !== null ? numberFormatter.format(eventsPerMinute) : "--";
+        document.getElementById("stream-last-event").textContent =
+          lastEventAgo !== null ? `Last event ${numberFormatter.format(lastEventAgo)}s ago` : "Last event --";
+
+        const datasetContainer = document.getElementById("stream-datasets");
+        datasetContainer.innerHTML = "";
+        if (datasets.length === 0) {
+          datasetContainer.innerHTML = '<span class="muted">Awaiting stream activity.</span>';
+        } else {
+          datasets.forEach((name) => {
+            const badge = document.createElement("span");
+            badge.className = "badge";
+            badge.textContent = name.toUpperCase();
+            datasetContainer.appendChild(badge);
+          });
+        }
+      }
+
       async function refreshDashboard() {
         try {
           const response = await fetch(`${API_BASE}/api/dashboard`);
           if (!response.ok) throw new Error("Dashboard unavailable");
           const data = await response.json();
           const queue = data.queue || {};
-          document.getElementById("last-updated").textContent = new Date(data.timestamp).toLocaleTimeString();
+          document.getElementById("last-updated").textContent = new Date(data.timestamp || Date.now()).toLocaleTimeString();
           document.getElementById("overall-health").textContent = `${queue.overall_health_score ?? "--"}`;
           document.getElementById("system-status-text").textContent = data.system_status ?? "--";
           document.getElementById("total-customers").textContent = queue.staffing?.total_customers ?? "--";
           document.getElementById("active-stations").textContent = queue.staffing?.active_stations ?? "--";
           document.getElementById("staffing-recommendation").textContent = queue.staffing?.recommendation || "--";
           document.getElementById("target-per-station").textContent = queue.staffing?.target_per_station ?? "--";
-          renderStations(queue.stations);
-          renderStaffing(queue.staffing);
-          renderCorrelations(data.correlations);
+
+          renderStations(queue.stations || []);
+          renderStaffing(queue.staffing || null);
+          renderCorrelations(data.correlations || {});
+          renderInventory(data.inventory || null);
+          renderInsights(data.enriched_insights || []);
+          renderStreamHealth(data.stream_health || {});
         } catch (error) {
           console.error(error);
           document.getElementById("system-status").textContent = "Offline";
@@ -470,9 +840,9 @@
           const response = await fetch(`${API_BASE}/api/alerts`);
           if (!response.ok) throw new Error("Alert feed unavailable");
           const data = await response.json();
-          renderAlerts(data.queue_incidents);
-          renderDetections(data.detection_events);
-          renderSuspicious(data.suspicious_checkouts);
+          renderAlerts(data.queue_incidents || []);
+          renderDetections(data.detection_events || []);
+          renderSuspicious(data.suspicious_checkouts || []);
         } catch (error) {
           console.error(error);
         }
