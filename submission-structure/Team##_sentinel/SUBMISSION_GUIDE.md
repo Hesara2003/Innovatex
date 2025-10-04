@@ -20,6 +20,6 @@ and write all artefacts into `./results/` (relative to `evidence/executables/`).
 No additional scripts or manual steps are allowed.
 
 ## Checklist before zipping and submitting
-- Algorithms tagged with `# @algorithm Name | Purpose` comments: <ENTER INFO>
+- Algorithms tagged with `# @aalgorithm Name | Purpose` comments: <ENTER INFO>
 - Evidence artefacts present in `evidence/`: <ENTER INFO>
 - Source code complete under `src/`: <ENTER INFO>
