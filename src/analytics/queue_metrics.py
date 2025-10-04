@@ -1,4 +1,9 @@
-"""Dependency-free queue analytics for Project Sentinel."""
+"""Queue analytics utilities (merged).
+
+Contains:
+- QueueMetricsService: real-time queue health, staffing recommendations, incidents
+- compute_kpis: batch KPI computation over SentinelEvent streams
+"""
 
 from __future__ import annotations
 
@@ -7,12 +12,21 @@ import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Deque, Dict, Iterable, List, Optional
+from statistics import mean
+from typing import Deque, Dict, Iterable, List, Optional, Tuple
+
+# Best-effort import of SentinelEvent for typing; fall back if package unavailable.
+try:
+    from ..pipeline.transform import SentinelEvent  # type: ignore
+except Exception:
+    SentinelEvent = object  # fallback for typing / environments without pipeline
 
 
+# -----------------------------
+# Shared helpers
+# -----------------------------
 def _parse_timestamp(value: Optional[str]) -> datetime:
     """Best-effort ISO-8601 parsing with UTC fallback."""
-
     if isinstance(value, datetime):
         return value
     if isinstance(value, str):
@@ -23,6 +37,20 @@ def _parse_timestamp(value: Optional[str]) -> datetime:
     return datetime.utcnow()
 
 
+def _coerce_float(value) -> Optional[float]:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+# -----------------------------
+# QueueSnapshot + QueueMetricsService
+# -----------------------------
 @dataclass
 class QueueSnapshot:
     """Short-term queue observation used for analytics."""
@@ -78,7 +106,6 @@ class QueueMetricsService:
     # ------------------------------------------------------------------
     def ingest_observation(self, station_id: str, payload: Dict[str, object]) -> Dict[str, object]:
         """Store a queue observation and return updated health."""
-
         station_id = station_id or str(payload.get("station_id", "UNK"))
         timestamp = _parse_timestamp(payload.get("timestamp"))
         customer_count = int(payload.get("customer_count") or payload.get("customers", 0) or 0)
@@ -116,7 +143,7 @@ class QueueMetricsService:
         return self.calculate_queue_health(station_id)
 
     # ------------------------------------------------------------------
-    # @algorithm Queue Health Scoring | Calculates real-time queue efficiency
+    # Queue Health Scoring
     # ------------------------------------------------------------------
     def calculate_queue_health(self, station_id: str) -> Dict[str, object]:
         history = self._history.get(station_id)
@@ -221,7 +248,7 @@ class QueueMetricsService:
         }
 
     # ------------------------------------------------------------------
-    # @algorithm Staff Allocation Optimizer | Recommends station management
+    # Staff Allocation Optimizer
     # ------------------------------------------------------------------
     def calculate_staff_allocation(self) -> Dict[str, object]:
         latest_snapshots = [history[-1] for history in self._history.values() if history]
@@ -246,7 +273,7 @@ class QueueMetricsService:
         }
 
     # ------------------------------------------------------------------
-    # @algorithm CX Incident Detector | Identifies customer experience issues
+    # CX Incident Detector
     # ------------------------------------------------------------------
     def _detect_incidents(self, station_id: str) -> List[Dict[str, object]]:
         history = self._history.get(station_id)
@@ -321,7 +348,7 @@ class QueueMetricsService:
         return list(self.alert_history)[-limit:]
 
     # ------------------------------------------------------------------
-    # Real-time dashboard data generator
+    # Dashboard generator
     # ------------------------------------------------------------------
     def generate_dashboard_payload(self) -> Dict[str, object]:
         station_cards = [self.calculate_queue_health(station_id) for station_id in self._history]
@@ -371,11 +398,11 @@ class QueueMetricsService:
         if len(snapshots) < 3:
             return 0.0
         counts = [snap.customer_count for snap in snapshots]
-        mean = sum(counts) / len(counts)
-        if mean == 0:
+        mean_val = sum(counts) / len(counts)
+        if mean_val == 0:
             return 0.0
-        variance = sum((c - mean) ** 2 for c in counts) / len(counts)
-        return min(1.0, variance ** 0.5 / mean)
+        variance = sum((c - mean_val) ** 2 for c in counts) / len(counts)
+        return min(1.0, variance ** 0.5 / mean_val)
 
     def _stagnation_duration_minutes(self, history: Iterable[QueueSnapshot]) -> float:
         snapshots = list(history)
@@ -415,4 +442,106 @@ class QueueMetricsService:
         }
 
 
+# single convenient instance (keeps behavior from the sandali branch)
 queue_metrics_service = QueueMetricsService()
+
+
+# -----------------------------
+# compute_kpis (batch KPI tool from hesara branch)
+# -----------------------------
+QUEUE_DATASETS = {"Queue_monitor", "queue_monitoring"}
+
+
+def compute_kpis(events: Iterable[SentinelEvent]) -> dict:
+    """Compute per-station KPIs from a stream of SentinelEvent objects.
+
+    Accepts any iterable of objects that expose:
+      - .dataset (str)
+      - .payload (dict) with key "data" containing keys "customer_count" and/or "average_dwell_time"
+      - .timestamp (datetime)
+      - .station_id (str | None)
+    """
+    per_station = defaultdict(list)
+    for event in events:
+        # some environments may have SentinelEvent as 'object' fallback; check attributes defensively
+        dataset = getattr(event, "dataset", None)
+        if dataset not in QUEUE_DATASETS:
+            continue
+        data = getattr(event, "payload", {}) or {}
+        if isinstance(data, dict):
+            data = data.get("data") or {}
+        queue_length = _coerce_float(data.get("customer_count"))
+        dwell = _coerce_float(data.get("average_dwell_time"))
+        if queue_length is None and dwell is None:
+            continue
+        station_key = getattr(event, "station_id", None) or "unknown"
+        timestamp = getattr(event, "timestamp", None) or datetime.utcnow()
+        per_station[station_key].append((timestamp, queue_length, dwell))
+
+    if not per_station:
+        return {
+            "station_kpis": {},
+            "avg_queue_length": None,
+            "peak_queue_length": None,
+            "avg_wait_seconds": None,
+            "peak_wait_seconds": None,
+            "avg_arrival_rate_per_min": None,
+        }
+
+    station_kpis: Dict[str, dict] = {}
+    all_queues = []
+    all_waits = []
+    arrival_rates = []
+
+    for station, series in per_station.items():
+        series.sort(key=lambda item: item[0])
+        queues = [q for _, q, _ in series if q is not None]
+        waits = [w for _, _, w in series if w is not None]
+
+        avg_queue = mean(queues) if queues else None
+        peak_queue = max(queues) if queues else None
+        avg_wait = mean(waits) if waits else None
+        peak_wait = max(waits) if waits else None
+
+        rate = _estimate_arrival_rate(series)
+        if rate is not None:
+            arrival_rates.append(rate)
+
+        station_kpis[station] = {
+            "avg_queue_length": avg_queue,
+            "peak_queue_length": peak_queue,
+            "avg_wait_seconds": avg_wait,
+            "peak_wait_seconds": peak_wait,
+            "avg_arrival_rate_per_min": rate,
+        }
+
+        all_queues.extend(queues)
+        all_waits.extend(waits)
+
+    return {
+        "station_kpis": station_kpis,
+        "avg_queue_length": mean(all_queues) if all_queues else None,
+        "peak_queue_length": max(all_queues) if all_queues else None,
+        "avg_wait_seconds": mean(all_waits) if all_waits else None,
+        "peak_wait_seconds": max(all_waits) if all_waits else None,
+        "avg_arrival_rate_per_min": mean(arrival_rates) if arrival_rates else None,
+    }
+
+
+def _estimate_arrival_rate(series: List[Tuple[datetime, Optional[float], Optional[float]]]) -> Optional[float]:
+    pairs = []
+    for idx in range(1, len(series)):
+        t0, q0, _ = series[idx - 1]
+        t1, q1, _ = series[idx]
+        if q0 is None or q1 is None:
+            continue
+        delta_q = q1 - q0
+        delta_t = (t1 - t0).total_seconds() / 60  # minutes
+        if delta_t <= 0:
+            continue
+        if delta_q <= 0:
+            continue
+        pairs.append(delta_q / delta_t)
+    if not pairs:
+        return None
+    return sum(pairs) / len(pairs)
