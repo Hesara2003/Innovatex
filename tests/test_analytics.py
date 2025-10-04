@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from src.analytics.queue_metrics import compute_kpis
+from src.analytics.queue_metrics import QueueMetricsService, compute_kpis
 from src.analytics.operations import generate_insights
 from src.pipeline.transform import SentinelEvent
 
@@ -99,3 +99,67 @@ def test_generate_insights_without_queue_events() -> None:
     assert insights["additional_insights"] == [
         "Operations running within targets. Continue monitoring real-time dashboards for anomalies."
     ]
+
+
+def test_queue_health_flags_multiple_risk_factors_and_incidents() -> None:
+    service = QueueMetricsService(target_customers_per_station=4, history_length=12)
+    base = datetime(2025, 8, 13, 18, 0, 0)
+
+    service.ingest_observation(
+        "REG1",
+        {
+            "timestamp": base.isoformat(),
+            "customer_count": 4,
+            "average_dwell_time": 180,
+            "service_rate": 3.2,
+        },
+    )
+
+    health = service.ingest_observation(
+        "REG1",
+        {
+            "timestamp": (base + timedelta(minutes=1)).isoformat(),
+            "customer_count": 9,
+            "average_dwell_time": 520,
+            "service_rate": 0.4,
+        },
+    )
+
+    alert_types = {alert["type"] for alert in health["alerts"]}
+    assert health["health_score"] < 50
+    assert health["status"] == "critical"
+    assert {"dwell_time_critical", "queue_congestion", "service_rate_low", "queue_growth"}.issubset(alert_types)
+
+    incidents = service.get_recent_incidents()
+    incident_types = {incident["type"] for incident in incidents}
+    assert "queue_surge" in incident_types
+    assert "extreme_wait" in incident_types
+
+
+def test_staff_allocation_recommends_more_stations_when_overloaded() -> None:
+    service = QueueMetricsService(target_customers_per_station=5)
+    base = datetime(2025, 8, 13, 19, 0, 0)
+
+    service.ingest_observation(
+        "REG_A",
+        {
+            "timestamp": base.isoformat(),
+            "customer_count": 12,
+            "average_dwell_time": 210,
+        },
+    )
+    service.ingest_observation(
+        "REG_B",
+        {
+            "timestamp": (base + timedelta(seconds=30)).isoformat(),
+            "customer_count": 11,
+            "average_dwell_time": 240,
+        },
+    )
+
+    allocation = service.calculate_staff_allocation()
+
+    assert allocation["active_stations"] == 2
+    assert allocation["required_stations"] == 5
+    assert allocation["total_customers"] == 23
+    assert allocation["recommendation"].startswith("Open 3 additional station")

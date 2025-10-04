@@ -79,6 +79,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "correlations": event_correlator.build_summary(),
             "inventory": inventory_latest,
             "enriched_insights": list(STATE["enriched_insights"])[-5:],
+            "stream_health": compute_stream_health(),
         }
         self._send_json(response)
 
@@ -119,6 +120,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         payload = self._read_json()
         dataset = str(payload.get("dataset", "")).lower()
         STATE["stream_events"].append(payload)
+        record_stream_event(dataset or None)
 
         observation = self._extract_queue_observation(payload)
         routed_queue = False
@@ -202,7 +204,39 @@ STATE: Dict[str, Deque] = {
     "stream_events": deque(maxlen=400),
     "inventory_reports": deque(maxlen=10),
     "enriched_insights": deque(maxlen=40),
+    "stream_heartbeat": deque(maxlen=900),
+    "stream_dataset_recent": deque(maxlen=200),
 }
+
+
+def record_stream_event(dataset: Optional[str]) -> None:
+    now = datetime.now(timezone.utc)
+    STATE["stream_heartbeat"].append(now)
+    if dataset:
+        STATE["stream_dataset_recent"].append(str(dataset))
+
+
+def compute_stream_health(window_seconds: int = 60) -> Dict[str, object]:
+    now = datetime.now(timezone.utc)
+    timestamps = STATE["stream_heartbeat"]
+
+    while timestamps and (now - timestamps[0]).total_seconds() > 600:
+        timestamps.popleft()
+
+    recent = [ts for ts in timestamps if (now - ts).total_seconds() <= window_seconds]
+    events_last_minute = len(recent)
+    events_per_minute = round((events_last_minute / window_seconds) * 60, 2) if window_seconds > 0 else 0.0
+    last_event_age = (now - timestamps[-1]).total_seconds() if timestamps else None
+
+    datasets_window = list(STATE["stream_dataset_recent"])[-100:]
+    active_datasets = sorted({name for name in datasets_window if name})
+
+    return {
+        "events_last_minute": events_last_minute,
+        "events_per_minute": events_per_minute,
+        "active_datasets": active_datasets,
+        "last_event_seconds_ago": round(last_event_age, 1) if last_event_age is not None else None,
+    }
 
 
 def seed_demo_data(samples: int = 5) -> None:
@@ -229,6 +263,7 @@ def seed_demo_data(samples: int = 5) -> None:
                 except json.JSONDecodeError:
                     continue
                 event["dataset"] = dataset
+                record_stream_event(dataset)
                 if dataset == "queue_monitor":
                     observation = {
                         "timestamp": event.get("timestamp"),
