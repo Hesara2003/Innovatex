@@ -26,24 +26,6 @@ def reset_state() -> None:
     _recent_queues.clear()
     _last_alert_queue.clear()
     _last_alert_wait.clear()
-
-
-def detect_queue_health(event: SentinelEvent) -> List[dict]:
-    if event.dataset not in QUEUE_DATASETS:
-        return []
-
-    station_id = event.station_id or "unknown"
-    now = event.timestamp
-    data = event.payload.get("data") or {}
-
-    queue_length = _coerce_int(data.get("customer_count"))
-    dwell_time = _coerce_float(data.get("average_dwell_time"))
-
-    alerts: List[dict] = []
-
-    if queue_length is not None:
-        alerts.extend(_process_queue_length(station_id, now, queue_length))
-    if dwell_time is not None:
         alerts.extend(_process_wait_time(station_id, now, dwell_time))
 
     return alerts
