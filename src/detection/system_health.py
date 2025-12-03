@@ -26,8 +26,16 @@ def reset_state() -> None:
 
 
 def detect_system_health(event: SentinelEvent) -> List[dict]:
-    status = _normalise_status(event.payload.get("status"))
-    data = event.payload.get("data")
+    # Handle both SentinelEvent and NormalizedRecord
+    if hasattr(event, 'payload'):
+        # SentinelEvent case
+        status = _normalise_status(event.payload.get("status"))
+        data = event.payload.get("data")
+    else:
+        # NormalizedRecord case 
+        status = _normalise_status(event.status)
+        data = event.attributes
+    
     if isinstance(data, dict) and status is None:
         status = _normalise_status(data.get("status"))
 
